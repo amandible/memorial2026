@@ -207,7 +207,11 @@ a site costing about $60/year to run.
 | Account | Alerts | Purpose |
 |---|---|---|
 | `joeweismanmemorial@gmail.com` | the memorial Gmail | The project's own monitoring |
-| Jazz's personal Google account | Jazz directly | Survives the memorial Gmail being lost |
+| Jazz's personal Google account | push to Jazz's phone | Survives the memorial Gmail being lost |
+
+Push notifications through UptimeRobot's mobile app go to the account owner without
+consuming a notify seat, so they work on the free plan — and an outage that buzzes a phone
+gets noticed, where an email may sit unread for days.
 
 Two free accounts beat one paid seat here, and not only on price. Vercel, Neon and
 UptimeRobot all sign in through the memorial Gmail, so a single account would mean the
