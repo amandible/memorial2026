@@ -162,6 +162,23 @@ load-bearing for uptime; losing it means you can't *change* the site, not that i
 Secrets live in Vercel's environment variables, never in the repo. `.env.example` lists
 what's needed; copy it to `.env.local` for development.
 
+> **⚠️ Adding an environment variable in Vercel does nothing until you redeploy.**
+> Values are injected into a deployment when it is built, so the running one keeps
+> whatever it was built with. There is no error — the code simply behaves as though
+> the variable is unset, which for this project means `/admin` refuses everyone,
+> Turnstile refuses every submission, and IP hashing silently stops.
+>
+> After adding or changing any variable: **Deployments → latest → ⋯ → Redeploy.**
+> This already cost one debugging round with `ADMIN_PASSWORD`.
+
+Two variables are needed for the guestbook and admin, neither of which can be
+recovered if lost:
+
+| Variable | Notes |
+|---|---|
+| `ADMIN_PASSWORD` | The only way into `/admin`. The session cookie is derived from it, so changing it signs everyone out. |
+| `IP_HASH_SALT` | Changing it orphans every existing hash and resets rate limiting. Set once. |
+
 ---
 
 ## First-time deployment setup
