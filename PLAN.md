@@ -45,13 +45,24 @@ The security section of the original doc was good.
    project. A lapsed domain is the most common way memorial sites die, and the cause is
    almost always a dead card on a renewal three years out when nobody is watching.
    Prepaying a decade removes that failure mode for the period that matters.
-2. **Cloudflare Images (~$5/mo)** for the photo pipeline — transcode, thumbnails,
-   resize variants, serving. Converts most of Milestone 2's photo work into a
-   configuration step. The original case for this was buying days against a tight
-   deadline; with six weeks that's weaker, but it still holds on simplicity grounds.
-   HEIC is the specific reason: iPhone photos won't render in browsers, and `sharp`
-   doesn't decode HEIC in its default builds, so hand-rolling means wrestling libheif
-   inside a serverless function with memory and timeout limits. Not worth owning for $5.
+2. **Cloudflare Images, Starter Bundle ($5/mo)** for the photo pipeline — ingest,
+   transcode, thumbnails, delivery. HEIC is the specific reason: iPhone photos won't
+   render in browsers, and `sharp` doesn't decode HEIC in its default builds, so
+   hand-rolling means wrestling libheif inside a serverless function with memory and
+   timeout limits.
+
+   *Take the bundle, not pay-as-you-go.* The `$5 per 100,000 images stored` on the PAYG
+   plan is a minimum billing increment, not metered — 500 photos costs the same $5 as
+   100,000. At an identical price the bundle also covers 500,000 deliveries, which PAYG
+   bills separately. An earlier draft of this section estimated "pennies" by misreading
+   that line as prorated.
+
+   *Considered and rejected:* storing originals in R2 (free under 10GB) and running
+   transformations against R2 URLs would be $0. Rejected because Cloudflare documents
+   HEIC input for transformations as basic-only, with reported resize failures — and
+   HEIC is the entire reason this product is in the stack. A failed transcode leaves a
+   photo with no viewable derivative, which puts moderation back to approving images
+   that can't be seen.
 3. **Nothing else.** Neon free and Vercel free are not constraints here (see below).
 
 **Deliberately not paying for:** a Neon paid tier (buys protected branches and longer
