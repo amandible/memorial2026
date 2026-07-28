@@ -230,6 +230,47 @@ body {
   overflow: hidden;
 }
 
+/* ---- Guestbook ---- */
+
+.entries { margin-top: var(--s4); }
+.jump-note { margin: 0; }
+.empty-state { margin-top: var(--s4); color: var(--muted); }
+.muted-note { color: var(--muted); font-size: var(--size-small); }
+.add-entry { margin-top: var(--s6); padding-top: var(--s4); border-top: 1px solid var(--rule); }
+.add-entry h2 { font-family: var(--display); font-weight: 400; font-size: var(--size-h2); margin: 0 0 .4rem; }
+.form-ok-block { margin-top: var(--s6); padding-top: var(--s4); border-top: 1px solid var(--rule); }
+
+.pager { display: flex; justify-content: space-between; gap: var(--s3);
+         margin-top: var(--s4); padding-top: var(--s3); border-top: 1px solid var(--rule); }
+.pager-note { margin-top: var(--s1); text-align: center; }
+
+/* ---- Admin ---- */
+
+.page-wide { max-width: 52rem; }
+.admin-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--s3); }
+.admin-head .page-title { text-align: left; margin-top: 0; }
+
+.stats { display: flex; flex-wrap: wrap; gap: var(--s4); margin: 0 0 var(--s5); padding: 0; }
+.stats div { margin: 0; }
+.stats dt { color: var(--muted); font-size: var(--size-small); }
+.stats dd { margin: 0; font-family: var(--display); font-size: 1.9rem; font-variant-numeric: tabular-nums; }
+
+.btn-quiet {
+  font-family: var(--body); font-size: var(--size-small);
+  color: var(--link); background: none; border: 1px solid var(--rule);
+  border-radius: 2px; padding: .4rem .8rem; cursor: pointer; min-height: 36px;
+}
+.btn-quiet:hover { border-color: currentColor; }
+.btn-quiet[disabled] { opacity: .5; cursor: default; }
+.btn-danger { color: #A33A2A; }
+@media (prefers-color-scheme: dark) { .btn-danger { color: #E39385; } }
+
+.entry.is-removed { opacity: .55; }
+.tag {
+  margin-left: .6rem; font-family: var(--body); font-size: .8rem; font-weight: 400;
+  text-transform: uppercase; letter-spacing: .08em; color: var(--muted);
+}
+
 .plainlist { list-style: none; padding: 0; margin: var(--s3) 0 0; }
 .plainlist li { margin-bottom: var(--s2); }
 
