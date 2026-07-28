@@ -1,21 +1,65 @@
 import type { Metadata } from "next";
-import Placeholder from "../placeholder";
+import PhotoForm from "./form";
+import { getApprovedPhotos } from "@/lib/photos";
+import { imageUrl } from "@/lib/cf-images";
 
 export const metadata: Metadata = { title: "Photographs" };
 
-export default function PhotosPage() {
+// Reads the database per request so a newly approved photo appears immediately.
+export const dynamic = "force-dynamic";
+
+export default async function PhotosPage() {
+  let photos: Awaited<ReturnType<typeof getApprovedPhotos>> = [];
+  let failed = false;
+  try {
+    photos = await getApprovedPhotos();
+  } catch (e) {
+    // A database problem shouldn't take the page down — the form still works.
+    console.error("Failed to load photos:", e);
+    failed = true;
+  }
+
   return (
-    <Placeholder title="Photographs">
-      <p>
-        A gallery of photographs of Joe is being put together, and there will be
-        a way to add your own here shortly — photographs sent in before the
-        service can be part of the day itself.
-      </p>
-      <p>
-        If you have pictures of him, please start looking them out. Anything at
-        all: the boat, the commune, the sauna, a kitchen he improved, a project
-        he talked you into.
-      </p>
-    </Placeholder>
+    <main className="page" id="main">
+      <h1 className="page-title">Photographs</h1>
+      <hr className="rule" />
+
+      {failed ? (
+        <p className="form-error">
+          The gallery can&rsquo;t be loaded just now. Please try again shortly.
+        </p>
+      ) : photos.length === 0 ? (
+        <p className="prose empty-state">
+          The gallery is still being put together. If you have photographs of
+          Joe, <a href="#add">please send them</a> — they&rsquo;ll appear here.
+        </p>
+      ) : (
+        <div className="gallery">
+          {photos.map((p) => (
+            <figure key={p.id}>
+              {/* Served straight from Cloudflare Images, never through
+                  next/image: that runs sharp, and these came from strangers.
+                  See PLAN.md §12. */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={imageUrl(p.storage_ref)}
+                alt={p.caption ?? "A photograph of Joe Weisman"}
+                loading="lazy"
+                decoding="async"
+              />
+              {(p.caption || p.submitter) && (
+                <figcaption>
+                  {p.caption}
+                  {p.caption && p.submitter && " "}
+                  {p.submitter && <span className="credit">&mdash; {p.submitter}</span>}
+                </figcaption>
+              )}
+            </figure>
+          ))}
+        </div>
+      )}
+
+      <PhotoForm siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY} />
+    </main>
   );
 }

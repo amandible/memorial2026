@@ -2,9 +2,11 @@ import type { Metadata } from "next";
 import { db } from "@/lib/db";
 import { formatDate } from "@/lib/guestbook";
 import { isAdmin } from "@/lib/admin-auth";
+import { imageUrl } from "@/lib/cf-images";
 import { logout } from "./actions";
 import LoginForm from "./login-form";
 import EntryActions from "./entry-actions";
+import PhotoActions from "./photo-actions";
 
 export const metadata: Metadata = {
   title: "Admin",
@@ -45,8 +47,32 @@ export default async function AdminPage() {
     select
       (select count(*)::int from contacts where removed_at is null) as contacts,
       (select count(*)::int from guestbook_entries where status = 'published') as published,
-      (select count(*)::int from guestbook_entries where status = 'removed') as removed
-  `) as { contacts: number; published: number; removed: number }[];
+      (select count(*)::int from guestbook_entries where status = 'removed') as removed,
+      (select count(*)::int from photos where status = 'pending') as photos_pending,
+      (select count(*)::int from photos where status = 'approved') as photos_approved
+  `) as {
+    contacts: number;
+    published: number;
+    removed: number;
+    photos_pending: number;
+    photos_approved: number;
+  }[];
+
+  // Pending first and oldest first, so nothing waits unnoticed.
+  const photos = (await db()`
+    select id, storage_ref, caption, submitter, email, status, created_at
+    from photos
+    order by (status = 'pending') desc, created_at
+    limit 200
+  `) as {
+    id: string;
+    storage_ref: string;
+    caption: string | null;
+    submitter: string | null;
+    email: string | null;
+    status: "pending" | "approved" | "rejected";
+    created_at: Date;
+  }[];
 
   return (
     <main className="page page-wide" id="main">
@@ -73,7 +99,38 @@ export default async function AdminPage() {
           <dt>Email list</dt>
           <dd>{counts.contacts}</dd>
         </div>
+        <div className={counts.photos_pending > 0 ? "stat-attention" : undefined}>
+          <dt>Photos waiting</dt>
+          <dd>{counts.photos_pending}</dd>
+        </div>
+        <div>
+          <dt>Photos live</dt>
+          <dd>{counts.photos_approved}</dd>
+        </div>
       </dl>
+
+      <h2>Photographs</h2>
+      {photos.length === 0 ? (
+        <p className="muted-note">None submitted yet.</p>
+      ) : (
+        <div className="mod-grid">
+          {photos.map((p) => (
+            <figure key={p.id} className={`mod-photo is-${p.status}`}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={imageUrl(p.storage_ref)} alt={p.caption ?? "Submitted photograph"} loading="lazy" />
+              <figcaption>
+                <span className={`tag tag-${p.status}`}>{p.status}</span>
+                {p.caption && <span className="mod-caption">{p.caption}</span>}
+                <span className="mod-meta">
+                  {p.submitter ?? "anonymous"}
+                  {p.email && <> &middot; {p.email}</>}
+                </span>
+              </figcaption>
+              <PhotoActions id={p.id} status={p.status} />
+            </figure>
+          ))}
+        </div>
+      )}
 
       <h2>Guestbook</h2>
       {entries.length === 0 ? (

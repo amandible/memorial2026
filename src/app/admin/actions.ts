@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
+import { deleteImage } from "@/lib/cf-images";
 import { checkPassword, grantSession, revokeSession, isAdmin } from "@/lib/admin-auth";
 
 export type LoginState = { error?: string };
@@ -36,6 +37,40 @@ export async function setEntryStatus(id: string, status: "published" | "removed"
   await db()`update guestbook_entries set status = ${status} where id = ${id}::uuid`;
   revalidatePath("/admin");
   revalidatePath("/guestbook");
+}
+
+/**
+ * Approve or reject a photo.
+ *
+ * Rejecting sets status and leaves the row and the image alone, so it can be
+ * reconsidered. Purging is separate and deliberate.
+ */
+export async function setPhotoStatus(
+  id: string,
+  status: "pending" | "approved" | "rejected",
+): Promise<void> {
+  if (!(await isAdmin())) throw new Error("Not authorised.");
+
+  await db()`
+    update photos set status = ${status}, reviewed_at = now() where id = ${id}::uuid
+  `;
+  revalidatePath("/admin");
+  revalidatePath("/photos");
+}
+
+/** Delete a rejected photo for good, removing it from Cloudflare Images too. */
+export async function purgePhoto(id: string): Promise<void> {
+  if (!(await isAdmin())) throw new Error("Not authorised.");
+
+  const [row] = (await db()`
+    select storage_ref from photos where id = ${id}::uuid and status = 'rejected'
+  `) as { storage_ref: string }[];
+  // Only rejected photos can be purged, so an approved one can't go by mistake.
+  if (!row) throw new Error("Only a rejected photo can be deleted.");
+
+  await deleteImage(row.storage_ref);
+  await db()`delete from photos where id = ${id}::uuid`;
+  revalidatePath("/admin");
 }
 
 export async function exportContactsCsv(): Promise<string> {

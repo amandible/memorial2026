@@ -336,6 +336,39 @@ body {
 .btn-danger { color: #A33A2A; }
 @media (prefers-color-scheme: dark) { .btn-danger { color: #E39385; } }
 
+/* Photo submission form */
+.picked { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--s3); }
+.picked li { border: 1px solid var(--rule); border-radius: 2px; padding: var(--s2); }
+.picked-head { display: flex; align-items: center; justify-content: space-between; gap: var(--s2); margin-bottom: .5rem; }
+.picked-name { font-family: var(--mono); font-size: .85rem; overflow-wrap: anywhere; }
+.picked-caption-label { display: block; font-size: var(--size-small); margin-bottom: .3rem; }
+.picked input[type="text"] {
+  font-family: var(--body); font-size: var(--size-body); width: 100%;
+  color: var(--text); background: var(--bg); border: 1px solid var(--rule);
+  border-radius: 2px; padding: .6rem .7rem;
+}
+.field input[type="file"] { font-family: var(--body); font-size: var(--size-small); padding: .6rem 0; }
+
+.gallery figcaption .credit { color: var(--muted); font-style: normal; }
+
+/* Moderation grid */
+.mod-grid {
+  display: grid; gap: var(--s3); margin: var(--s3) 0 var(--s5);
+  grid-template-columns: repeat(auto-fill, minmax(min(220px, 100%), 1fr));
+}
+.mod-photo { margin: 0; border: 1px solid var(--rule); border-radius: 2px; padding: var(--s2); }
+.mod-photo img { width: 100%; height: auto; display: block; background: var(--bg-sunk); }
+.mod-photo figcaption { display: flex; flex-direction: column; gap: .3rem; margin-top: .6rem; font-size: var(--size-small); }
+.mod-caption { overflow-wrap: anywhere; }
+.mod-meta { color: var(--muted); font-size: .85rem; overflow-wrap: anywhere; }
+.mod-photo.is-rejected { opacity: .5; }
+.photo-actions { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .6rem; }
+
+.tag-pending { color: var(--todo); }
+.tag-approved { color: var(--muted); }
+.tag-rejected { color: var(--muted); }
+.stat-attention dd { color: var(--todo); }
+
 .entry.is-removed { opacity: .55; }
 .tag {
   margin-left: .6rem; font-family: var(--body); font-size: .8rem; font-weight: 400;
