@@ -196,10 +196,34 @@ minutes would spend quota and turn their blips into our alerts.
 Turn on **SSL expiry notifications** as well. Vercel auto-renews, but a failed renewal
 takes the site down in every browser at once.
 
-**Alert contacts** are under *My Settings → Alert Contacts* (or *Integrations & Alert
-Contacts* in the newer UI); a monitor's own edit screen also has an "add alert contact"
-link. Add more than one person — an alert that only reaches one inbox is a single point
-of failure of its own.
+### Getting alerts to more than one person
+
+UptimeRobot's free plan has **zero notify seats** — alerts only ever go to the account
+owner's own address, and adding recipients starts at $9/month. That is poor value against
+a site costing about $60/year to run.
+
+**So there is more than one UptimeRobot account, each watching the same two URLs:**
+
+| Account | Alerts | Purpose |
+|---|---|---|
+| `joeweismanmemorial@gmail.com` | the memorial Gmail | The project's own monitoring |
+| Jazz's personal Google account | Jazz directly | Survives the memorial Gmail being lost |
+
+Two free accounts beat one paid seat here, and not only on price. Vercel, Neon and
+UptimeRobot all sign in through the memorial Gmail, so a single account would mean the
+monitoring dies in the same event as the thing it monitors — nobody would be told. An
+independently-owned second account has no such shared dependency.
+
+Anyone else who should be alerted (Luke) can add their own free account the same way; the
+monitors take a minute to recreate.
+
+**When adding an account, recreate both monitors** — the health endpoint *and* the keyword
+check. An account watching only the home page would report all-clear through a database
+outage.
+
+If two dashboards ever becomes tiresome, the alternative is a Gmail filter forwarding
+`From: uptimerobot.com` to other addresses. Simpler to run, but it keeps the shared
+dependency on the Gmail, which is the thing the second account exists to avoid.
 
 Nothing here can warn about **domain expiry**. It works right up until it doesn't. The
 registration runs ten years; the calendar reminder for year nine is the only defence.
@@ -234,9 +258,11 @@ load-bearing for uptime; losing it means you can't *change* the site, not that i
 >
 > Mitigate: put a recovery phone and a recovery email on the Google account, save the
 > 2FA backup codes somewhere a family member can reach, and make sure at least one other
-> person can get into that Gmail. Add a **second alert contact** in UptimeRobot pointing
-> at a personal address, so an outage notification doesn't depend on the same account
-> that might be the thing that's lost.
+> person can get into that Gmail.
+>
+> The alerting half of this is already handled — there is a second UptimeRobot account
+> under a personal Google account, so an outage still reaches someone even if the
+> memorial Gmail is gone. See "Getting alerts to more than one person" above.
 
 Secrets live in Vercel's environment variables, never in the repo. `.env.example` lists
 what's needed; copy it to `.env.local` for development.
