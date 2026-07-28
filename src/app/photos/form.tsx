@@ -53,11 +53,29 @@ export default function PhotoForm({ siteKey }: { siteKey?: string }) {
     setBusy(true);
     setProgress({ done: 0, total: picked.length });
 
+    // Which step we're on, so a failure says something useful instead of
+    // "something went wrong". Three earlier reports were undiagnosable because
+    // every failure produced the same sentence.
+    let stage: "verify" | "tickets" | "upload" | "record" = "verify";
+
     try {
       const token =
         (document.querySelector('[name="cf-turnstile-response"]') as HTMLInputElement | null)
-          ?.value ?? null;
+          ?.value || null;
 
+      // Turnstile tokens last 300 seconds. This form asks people to open a file
+      // picker, choose photos and write a caption for each, which routinely takes
+      // longer than that — so an empty or spent token here is expected, not
+      // exceptional. Refresh it and let them try again rather than failing oddly.
+      if (!token) {
+        resetTurnstile();
+        setError(
+          "The verification below expired while you were choosing photos. It has been refreshed — please press Send again.",
+        );
+        return;
+      }
+
+      stage = "tickets";
       const res = await requestUploads(picked.length, token);
       if (!res.ok) {
         setError(res.error);
@@ -68,30 +86,47 @@ export default function PhotoForm({ siteKey }: { siteKey?: string }) {
       // Upload one at a time. Sequential rather than parallel so a phone on a
       // weak connection doesn't stall every request at once, and so progress
       // means something.
+      stage = "upload";
       const done: Submission[] = [];
+      const failures: string[] = [];
       for (let i = 0; i < picked.length; i++) {
         const ticket = res.tickets[i];
         const body = new FormData();
         body.append("file", picked[i].file);
-        const up = await fetch(ticket.uploadURL, { method: "POST", body });
-        if (up.ok) {
-          done.push({
-            id: ticket.id,
-            handle: ticket.handle,
-            expiresAt: ticket.expiresAt,
-            caption: picked[i].caption,
-          });
-        } else {
-          console.error("Upload failed for", picked[i].file.name, up.status);
+        try {
+          const up = await fetch(ticket.uploadURL, { method: "POST", body });
+          if (up.ok) {
+            done.push({
+              id: ticket.id,
+              handle: ticket.handle,
+              expiresAt: ticket.expiresAt,
+              caption: picked[i].caption,
+            });
+          } else {
+            const detail = await up.text().catch(() => "");
+            console.error("Upload rejected:", picked[i].file.name, up.status, detail.slice(0, 300));
+            failures.push(`${picked[i].file.name} (${up.status})`);
+          }
+        } catch (err) {
+          // A single file failing must not abandon the others.
+          console.error("Upload threw for", picked[i].file.name, err);
+          failures.push(`${picked[i].file.name} (connection)`);
         }
         setProgress({ done: i + 1, total: picked.length });
       }
 
       if (done.length === 0) {
-        setError("The photos couldn't be uploaded. Please try again.");
         resetTurnstile();
+        setError(
+          `Those photos couldn't be sent to our image service${failures.length ? ` — ${failures.join(", ")}` : ""}. Please try again, or email them to contact@joeweisman.org.`,
+        );
         return;
       }
+      if (failures.length > 0) {
+        console.warn("Some photos failed to upload:", failures);
+      }
+
+      stage = "record";
 
       const rec = await recordPhotos(done, name, email);
       if (!rec.ok) {
@@ -102,15 +137,19 @@ export default function PhotoForm({ siteKey }: { siteKey?: string }) {
       setSaved(rec.saved);
       setPicked([]);
     } catch (err) {
-      // The generic message is what a visitor should see, but swallowing the
-      // cause made a real failure undiagnosable. Log it, and surface it in
-      // development where only we are looking.
-      console.error("Photo submission failed:", err);
+      console.error(`Photo submission failed at stage "${stage}":`, err);
       const detail = err instanceof Error ? err.message : String(err);
+      // Name the step even in production. A visitor reporting "it failed while
+      // sending" gives us something to act on; "something went wrong" does not.
+      const where = {
+        verify: "while checking the verification box",
+        tickets: "while getting ready to upload",
+        upload: "while sending the photos",
+        record: "while saving the photos — they may have uploaded already",
+      }[stage];
       setError(
-        process.env.NODE_ENV === "development"
-          ? `Something went wrong: ${detail}`
-          : "Something went wrong. Please try again, or write to contact@joeweisman.org.",
+        `Something went wrong ${where}. Please try again, or email them to contact@joeweisman.org.` +
+          (process.env.NODE_ENV === "development" ? ` [${detail}]` : ""),
       );
       resetTurnstile();
     } finally {
