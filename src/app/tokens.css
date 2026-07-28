@@ -176,6 +176,60 @@ body {
   margin: var(--s4) 0 0;
   text-wrap: balance;
 }
+/* ---- Forms ----
+   Generous targets and visible labels. The audience is older and mostly on a
+   phone; placeholder-as-label and tiny inputs both fail that test. */
+
+.form { display: flex; flex-direction: column; gap: var(--s3); margin-top: var(--s4); }
+
+.field { display: flex; flex-direction: column; gap: .4rem; }
+.field label { font-weight: 600; }
+.field .optional { font-weight: 400; color: var(--muted); }
+
+.field input,
+.field textarea {
+  font-family: var(--body);
+  font-size: var(--size-body);       /* 16px+ stops iOS zooming on focus */
+  line-height: 1.4;
+  color: var(--text);
+  background: var(--bg-sunk);
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+  padding: .7rem .8rem;
+  width: 100%;
+}
+.field textarea { resize: vertical; min-height: 5.5rem; }
+.field input:focus-visible,
+.field textarea:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+
+.form button {
+  font-family: var(--display);
+  font-size: 1.2rem;
+  color: var(--bg);
+  background: var(--text);
+  border: 1px solid var(--text);
+  border-radius: 2px;
+  padding: .7rem 1.6rem;
+  cursor: pointer;
+  align-self: flex-start;
+  min-height: 44px;                  /* comfortable touch target */
+}
+.form button:hover { background: var(--bg); color: var(--text); }
+.form button[disabled] { opacity: .55; cursor: default; }
+
+.form-error, .form-ok { margin: var(--s3) 0 0; text-wrap: pretty; }
+.form-error { color: var(--text); border-left: 3px solid var(--todo); padding-left: var(--s2); }
+.form-ok { font-size: 1.25rem; font-family: var(--display); }
+
+/* Off-screen rather than display:none — some bots skip hidden fields. */
+.honeypot {
+  position: absolute;
+  left: -9999px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+
 .plainlist { list-style: none; padding: 0; margin: var(--s3) 0 0; }
 .plainlist li { margin-bottom: var(--s2); }
 
