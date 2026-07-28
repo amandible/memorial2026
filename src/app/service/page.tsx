@@ -8,10 +8,12 @@ export default function ServicePage() {
   const doc = readDoc("service");
 
   // Once content/service.md is filled in, this renders it instead of the placeholder.
+  // The heading comes from the file's frontmatter, so the page can be retitled
+  // without touching code — the nav keeps its own shorter label.
   if (!isEmpty(doc)) {
     return (
       <main className="page" id="main">
-        <h1 className="page-title">The Service</h1>
+        <h1 className="page-title">{doc.title ?? "The Service"}</h1>
         <hr className="rule" />
         <div className="prose" dangerouslySetInnerHTML={{ __html: doc.html }} />
       </main>
