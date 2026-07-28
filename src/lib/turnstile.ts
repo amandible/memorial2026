@@ -19,11 +19,11 @@ export async function verifyTurnstile(
   token: string | null | undefined,
   ip?: string | null,
 ): Promise<{ ok: boolean; error?: string }> {
-  const secret = process.env.TURNSTILE_SECRET_KEY;
+  const secret = process.env.TURNSTILE_SECRET;
 
   if (!secret) {
     if (process.env.NODE_ENV === "production") {
-      console.error("TURNSTILE_SECRET_KEY is not set — refusing form submissions.");
+      console.error("TURNSTILE_SECRET is not set — refusing form submissions.");
       return { ok: false, error: "This form is temporarily unavailable. Please try again later." };
     }
     return { ok: true };
@@ -43,10 +43,12 @@ export async function verifyTurnstile(
       headers: { "content-type": "application/x-www-form-urlencoded" },
       signal: AbortSignal.timeout(10_000),
     });
-    const data = (await res.json()) as { success: boolean; "error-codes"?: string[] };
+    if (!res.ok) throw new Error(`siteverify ${res.status}`);
+    const result = (await res.json()) as { success: boolean; "error-codes"?: string[] };
 
-    if (!data.success) {
-      console.warn("Turnstile rejected a submission:", data["error-codes"]);
+    // Gate on an explicit true. A malformed or unexpected body must not pass.
+    if (result.success !== true) {
+      console.warn("Turnstile rejected a submission:", result["error-codes"]);
       return { ok: false, error: "Verification failed. Please reload the page and try again." };
     }
     return { ok: true };

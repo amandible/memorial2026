@@ -67,7 +67,16 @@ export default function SubscribeForm({ siteKey }: { siteKey?: string }) {
           <input id="website" name="website" type="text" tabIndex={-1} autoComplete="off" />
         </div>
 
-        {siteKey && <div ref={widget} className="cf-turnstile" data-sitekey={siteKey} />}
+        {/* data-action is Cloudflare's aggregate attribution marker for the
+            Spin integration. Account-level only, never per-visitor. */}
+        {siteKey && (
+          <div
+            ref={widget}
+            className="cf-turnstile"
+            data-sitekey={siteKey}
+            data-action="turnstile-spin-v2"
+          />
+        )}
 
         {state.status === "error" && (
           <p className="form-error" role="alert">
