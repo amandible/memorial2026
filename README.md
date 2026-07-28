@@ -169,11 +169,40 @@ Choices worth knowing before you fight them:
 | Bot defence | Cloudflare Turnstile | Live on all three forms |
 | `contact@` | Cloudflare Email Routing | Live, forwards to the memorial Gmail |
 | Admin notifications | Resend | Live, from `notifications.joeweisman.org` |
+| Uptime alerts | UptimeRobot | Live, free tier. Two monitors — see below |
 | Photo archive | Cloudflare R2 | **Not set up.** Originals live only in Cloudflare Images |
-| Uptime alerts | UptimeRobot | **Not set up — do not skip this** |
 
 Running cost is about **$5/month plus the domain**: everything is on a free tier except
 Cloudflare Images.
+
+### Uptime monitoring
+
+Two monitors, because either alone would miss something:
+
+| Monitor | Watches | Catches |
+|---|---|---|
+| `https://joeweisman.org/api/health` | status code | The **database being unreachable.** The home page is static, so Vercel keeps serving it with a 200 while the guestbook and gallery are broken — a homepage check would report all-clear through the outage that matters most. |
+| `https://joeweisman.org` keyword `Joe Weisman` | page content | A Vercel error page returning 200. Checking for his name means the alert fires when the page is *wrong*, not merely reachable. |
+
+`/api/health` returns 503 only for a real visitor-facing outage — the database being down,
+or Turnstile's secret missing in production, which makes every form refuse submissions.
+Optional services that are merely switched off appear under `degraded` in the body and do
+**not** trip the alert. A monitor that fires for non-outages gets ignored, and then the
+real one is missed too.
+
+It deliberately makes no live calls to Cloudflare Images or Resend: doing so every five
+minutes would spend quota and turn their blips into our alerts.
+
+Turn on **SSL expiry notifications** as well. Vercel auto-renews, but a failed renewal
+takes the site down in every browser at once.
+
+**Alert contacts** are under *My Settings → Alert Contacts* (or *Integrations & Alert
+Contacts* in the newer UI); a monitor's own edit screen also has an "add alert contact"
+link. Add more than one person — an alert that only reaches one inbox is a single point
+of failure of its own.
+
+Nothing here can warn about **domain expiry**. It works right up until it doesn't. The
+registration runs ten years; the calendar reminder for year nine is the only defence.
 
 > **Resend must never verify `joeweisman.org` itself.** Cloudflare Email Routing owns the
 > apex MX records to deliver `contact@`, and Resend's MX would collide with them and break
@@ -189,18 +218,25 @@ load-bearing for uptime; losing it means you can't *change* the site, not that i
 | Account | Sign-in method |
 |---|---|
 | Cloudflare | Its own account — email + password, using the memorial Gmail |
+| Resend | Its own account, using the memorial Gmail |
 | Vercel | **Google OAuth** via the memorial Gmail |
 | Neon | **Google OAuth** via the memorial Gmail |
+| UptimeRobot | **Google OAuth** via the memorial Gmail |
 | GitHub | Jazz's personal account (`jazzlw`) |
 
-> **⚠️ The Gmail is a single point of failure for Vercel and Neon.** Because both use
-> Google sign-in, losing access to `joeweismanmemorial@gmail.com` means losing the host
-> and the database with no separate password to fall back on. Cloudflare is safer here —
-> it has its own credentials, so it survives independently.
+> **⚠️ The Gmail is a single point of failure for Vercel, Neon and UptimeRobot.**
+> All three sign in through Google, so losing access to `joeweismanmemorial@gmail.com`
+> means losing the host, the database, and the thing that would have told you they were
+> down — with no separate password to fall back on for any of them.
+>
+> That last part is the nasty bit: the monitoring dies in the same event as the site, so
+> nobody gets told. Cloudflare and Resend are safer, having their own credentials.
 >
 > Mitigate: put a recovery phone and a recovery email on the Google account, save the
 > 2FA backup codes somewhere a family member can reach, and make sure at least one other
-> person can get into that Gmail. Do this before the site is something anyone relies on.
+> person can get into that Gmail. Add a **second alert contact** in UptimeRobot pointing
+> at a personal address, so an outage notification doesn't depend on the same account
+> that might be the thing that's lost.
 
 Secrets live in Vercel's environment variables, never in the repo. `.env.example` lists
 what's needed; copy it to `.env.local` for development.
