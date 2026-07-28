@@ -3,8 +3,9 @@
 A memorial site for Joe Weisman (December 16, 1944 – July 10, 2026).
 
 Obituary, service details, a photo gallery with public submissions, a guestbook,
-and a way to collect email addresses. Built to be cheap, boring, and durable —
-it should still be standing in ten years with nobody tending it.
+seventy-one of his own recipes, and a way to collect email addresses. Built to be
+cheap, boring, and durable — it should still be standing in ten years with nobody
+tending it.
 
 `PLAN.md` is the design document: what was chosen, what was rejected, and why.
 Read it before making a structural change. This file is how to run and deploy the thing.
@@ -66,6 +67,13 @@ development machine. Any free port works.
 | `npm run build` | Production build — run this before pushing anything structural |
 | `npm start` | Serve the production build locally |
 | `npm run lint` | ESLint |
+| `npm test` | Unit tests — Node's built-in runner, no dependencies |
+| `npm run migrate` | Apply any unapplied `.sql` file in `db/` |
+
+The tests cover the parts where a mistake is expensive and silent: that a rejected
+Turnstile token is refused even under the lenient outage policy, that an unset
+`ADMIN_PASSWORD` lets nobody in, and that a failing notification never throws. Run them
+before pushing anything touching `src/lib/`.
 
 ---
 
@@ -77,10 +85,14 @@ React:
 | File | Appears at |
 |---|---|
 | `content/obituary.md` | The home page |
-| `content/service.md` | `/service` — while empty, that page shows a placeholder instead |
+| `content/service.md` | `/service` — while empty, that page shows a placeholder instead. Its `title:` frontmatter is the page heading. |
+| `content/recipes/` | `/recipes` — Joe's own text files. See the README in that directory before touching them. |
 
 Plain Markdown: blank line between paragraphs, `*italic*`, `## subheading`. Edit, commit,
 push. That's the whole workflow.
+
+The recipes are **not** Markdown and must not be reformatted — they are the original
+files off his machine, rendered exactly as typed.
 
 **Unfilled placeholders.** Anything like `XXXX` shows in amber during development and
 prints a warning in the build log:
@@ -97,45 +109,76 @@ It is a warning, not an error — it will not stop a deploy. Watch for it.
 ## What's where
 
 ```
-content/            Markdown — the actual words
+content/
+  obituary.md · service.md    The written pages
+  recipes/                    Joe's original recipe files + _titles.json
+db/                           Numbered .sql migrations, applied by npm run migrate
+scripts/migrate.mjs           The migration runner
+tests/                        Unit tests (npm test)
 src/app/
-  layout.tsx        Shell, fonts, metadata, Open Graph tags
-  nav.tsx           Site header (client component — needs the current path)
-  page.tsx          Home: portrait, name, dates, obituary
-  tokens.css        The entire design system. Colors, type, layout, components.
-  fonts.ts          Source Serif 4 + EB Garamond, loaded from committed .woff2
-  fonts/            The font files themselves
-  service|photos|guestbook|subscribe/    Section pages
-src/lib/content.ts  Reads and renders the Markdown
-public/             Only what ships — currently just portrait-hero.jpg
-media/              Working files. GITIGNORED, never deployed.
-  originals/        Untouched source photos, bound for R2 eventually
-  gallery/          Staging for gallery photos
+  layout.tsx                  Shell, fonts, metadata, Open Graph
+  nav.tsx                     Site header (client component — needs the current path)
+  page.tsx                    Home: portrait, name, dates, obituary
+  not-found.tsx               Styled 404
+  tokens.css                  The entire design system
+  fonts.ts · fonts/           Source Serif 4, EB Garamond, IBM Plex Mono
+  icon.png · apple-icon.png   Favicons
+  service/ recipes/           Content pages
+  guestbook/ photos/ subscribe/   Forms — page + form.tsx + actions.ts each
+  admin/                      Password-gated moderation
+src/lib/
+  content.ts recipes.ts       Read and render the written content
+  db.ts                       Lazy Neon client (pooled connection)
+  guestbook.ts photos.ts      Queries
+  turnstile.ts                Bot verification, with the outage policy
+  cf-images.ts                Direct uploads and delivery URLs
+  notify.ts                   Admin emails via Resend
+  admin-password.ts           Password + token crypto (no Next imports, so testable)
+  admin-auth.ts               Cookie session on top of it
+  ip.ts sections.ts
+public/                       Only what ships: portrait-hero.jpg, og.jpg
+media/                        Working files. GITIGNORED, never deployed.
 ```
 
-Two deliberate choices worth knowing before you fight them:
+Choices worth knowing before you fight them:
 
 - **No Tailwind.** The design is typography-driven and lives in `tokens.css`. One less
-  build dependency, and it survives the eventual freeze to static (see `PLAN.md` §3, M6).
+  build dependency, and it survives the eventual freeze to static (`PLAN.md` §3, M6).
 - **Fonts are committed as files**, not fetched by `next/font/google`. That loader
   downloads from Google at *build* time, so a rebuild in year three can fail if the API
-  changes. See `PLAN.md` §11.
+  changes. `PLAN.md` §11.
+- **Visitor photos are served straight from Cloudflare Images, never through
+  `next/image`.** Next's optimizer runs `sharp`, and these files come from strangers.
+  This is a security boundary, not a preference. `PLAN.md` §12.
+- **Visitor text is never rendered as HTML.** `dangerouslySetInnerHTML` is only ever used
+  for our own Markdown in `content/`.
+- **`admin-password.ts` is separate from `admin-auth.ts`** because the latter imports
+  `next/headers` and so can't be tested outside the framework.
 
 ---
 
 ## The services
 
-| What | Where | Notes |
+| What | Where | Status |
 |---|---|---|
-| Domain | Cloudflare Registrar | Registered 10 years, auto-renew on |
-| DNS | Cloudflare | Records must be **grey cloud** — see below |
-| Hosting | Vercel | Free tier, auto-deploys from GitHub |
-| Database | Neon (Postgres) | Not wired up yet — Milestone 2 |
-| Photo originals | Cloudflare R2 | Not wired up yet |
-| Photo serving | Cloudflare Images | Not wired up yet |
-| `contact@` | Cloudflare Email Routing | Forwards to the memorial Gmail |
-| Admin notifications | Resend | Not wired up yet. Notifications only, not the mailing list |
-| Uptime alerts | UptimeRobot | Not set up yet — do not skip this |
+| Domain | Cloudflare Registrar | Live. 10 years, auto-renew on |
+| DNS | Cloudflare | Live. Records are **grey cloud** — see below |
+| Hosting | Vercel | Live, free tier, auto-deploys from GitHub |
+| Database | Neon (Postgres 18, `us-east-1`) | Live, free tier |
+| Photo serving | Cloudflare Images | Live. **Starter Bundle, $5/mo** — see `PLAN.md` §2 |
+| Bot defence | Cloudflare Turnstile | Live on all three forms |
+| `contact@` | Cloudflare Email Routing | Live, forwards to the memorial Gmail |
+| Admin notifications | Resend | Live, from `notifications.joeweisman.org` |
+| Photo archive | Cloudflare R2 | **Not set up.** Originals live only in Cloudflare Images |
+| Uptime alerts | UptimeRobot | **Not set up — do not skip this** |
+
+Running cost is about **$5/month plus the domain**: everything is on a free tier except
+Cloudflare Images.
+
+> **Resend must never verify `joeweisman.org` itself.** Cloudflare Email Routing owns the
+> apex MX records to deliver `contact@`, and Resend's MX would collide with them and break
+> inbound mail. Only the `notifications.joeweisman.org` subdomain is verified, which keeps
+> the two systems apart.
 
 ### How each account is logged into
 
@@ -178,6 +221,39 @@ recovered if lost:
 |---|---|
 | `ADMIN_PASSWORD` | The only way into `/admin`. The session cookie is derived from it, so changing it signs everyone out. |
 | `IP_HASH_SALT` | Changing it orphans every existing hash and resets rate limiting. Set once. |
+
+---
+
+## Moderating the site
+
+Everything happens at **`/admin`** — not linked from anywhere, `noindex`, one password.
+
+**You get an email when something arrives.** A guestbook entry includes the full message,
+so you can decide from your inbox whether it needs removing. Photos send one email per
+submission, however many pictures it contained.
+
+| | |
+|---|---|
+| **Guestbook** | Entries publish **immediately**. That is deliberate — a tribute that vanishes on submit reads as broken to the person who wrote it. *Hide* removes it from the public page; the row survives and *Restore* brings it back. |
+| **Photos** | Held as `pending` and invisible until you *Approve*. *Reject* hides it reversibly. *Delete for good* appears only on already-rejected photos and also removes the file from Cloudflare — the one irreversible action here. |
+| **Email list** | The count is on the dashboard. Export and send by hand from Gmail, BCC (see below). |
+
+Rate limits, if someone reports being blocked: five guestbook entries and forty photos per
+IP per hour.
+
+---
+
+## Sending an update to the list
+
+There is no broadcast system, on purpose (`PLAN.md` §6). Export the addresses, then send
+from `joeweismanmemorial@gmail.com` with everyone in **BCC** — never CC, which would leak
+every mourner's address to every other mourner.
+
+Fine up to about 200 recipients. Past ~300, split it across days or move to Buttondown;
+the CSV makes that migration trivial, which is the main reason the addresses live in our
+own table rather than someone's form widget.
+
+When someone asks to be removed, set `removed_at` on their row. Honour it.
 
 ---
 
