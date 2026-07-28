@@ -6,19 +6,35 @@ export function turnstileConfigured(): boolean {
 }
 
 /**
+ * What to do when Cloudflare itself can't be reached — a timeout, a network
+ * error, or a non-2xx from siteverify.
+ *
+ * This is NOT about a rejected token. A `success: false` is a real bot signal
+ * and is always refused, whatever this is set to.
+ *
+ *   "deny"  — refuse the submission. Correct where accepting an unverified one
+ *             would publish something to the public site.
+ *   "allow" — accept it. Correct where the cost of losing a real person's
+ *             submission during a Cloudflare outage outweighs the cost of one
+ *             unverified row in private data.
+ */
+export type OutagePolicy = "deny" | "allow";
+
+/**
  * Verify a Turnstile token server-side. Never trust the browser's word for it.
  *
- * Fails **closed** in production: if the secret isn't configured, submissions are
- * refused rather than accepted unprotected. A missing key is an operator problem
- * and should look like one, not silently open a public form to bots.
+ * Fails **closed** on a missing secret in production: submissions are refused
+ * rather than accepted unprotected. A missing key is an operator problem and
+ * should look like one, not silently open a public form to bots.
  *
- * In development, an unconfigured secret passes so the form can be worked on
+ * In development, an unconfigured secret passes so forms can be worked on
  * before the keys exist.
  */
 export async function verifyTurnstile(
   token: string | null | undefined,
   ip?: string | null,
-): Promise<{ ok: boolean; error?: string }> {
+  onOutage: OutagePolicy = "deny",
+): Promise<{ ok: boolean; error?: string; unverified?: boolean }> {
   const secret = process.env.TURNSTILE_SECRET;
 
   if (!secret) {
@@ -53,9 +69,13 @@ export async function verifyTurnstile(
     }
     return { ok: true };
   } catch (e) {
-    // A Cloudflare outage or timeout shouldn't lose someone's submission silently,
-    // but it also can't wave them through. Ask them to retry.
-    console.error("Turnstile verification error:", e);
+    // Cloudflare is unreachable. This is not a bot signal — it's an outage —
+    // so the caller decides. See OutagePolicy.
+    console.error("Turnstile unreachable:", e);
+    if (onOutage === "allow") {
+      console.warn("Accepting an UNVERIFIED submission: Turnstile was unreachable.");
+      return { ok: true, unverified: true };
+    }
     return { ok: false, error: "Could not verify your submission just now. Please try again." };
   }
 }

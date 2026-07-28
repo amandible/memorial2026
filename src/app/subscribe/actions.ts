@@ -43,9 +43,15 @@ export async function subscribe(
   const hdrs = await headers();
   const ip = hdrs.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null;
 
+  // "allow" on outage: if Cloudflare is unreachable, take the address anyway.
+  // Losing a real person who wanted to hear about the service is worse than one
+  // unverified row in a private list. A *rejected* token is still refused —
+  // this only covers Cloudflare being down. The guestbook, which publishes
+  // straight to the public page, will use "deny".
   const check = await verifyTurnstile(
     formData.get("cf-turnstile-response") as string | null,
     ip,
+    "allow",
   );
   if (!check.ok) return { status: "error", message: check.error };
 
