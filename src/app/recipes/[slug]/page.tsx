@@ -33,7 +33,7 @@ export default async function RecipePage({ params }: { params: Promise<{ slug: s
   const next = all[i + 1];
 
   return (
-    <main className="page" id="main">
+    <main className="page page-recipe" id="main">
       <p className="crumb">
         <Link href="/recipes">&larr; All recipes</Link>
       </p>

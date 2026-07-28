@@ -267,19 +267,31 @@ body {
 
 .recipe-body {
   font-family: var(--mono);
-  /* Smaller than body text: monospace runs wide, and these lines were written
-     for an 80-column terminal. */
+  /* Smaller than the body serif: monospace runs wide, and these need 80
+     columns to sit unwrapped. */
   font-size: .95rem;
   line-height: 1.55;
-  /* pre-wrap, not pre: his line breaks and spacing are preserved, but the
-     handful of very long unwrapped lines wrap instead of scrolling the page. */
+  /* pre-wrap, not pre: his line breaks and spacing are preserved, and the
+     handful of genuinely unwrapped lines (up to 725 characters) wrap instead
+     of scrolling the page sideways.
+     No overflow-wrap: break-word here — that would split mid-word, which looks
+     wrong in a monospaced ingredient list. Long lines break at spaces. */
   white-space: pre-wrap;
-  overflow-wrap: break-word;
   margin: 0;
   padding: var(--s3) 0 0;
   tab-size: 8;
+
+  /* ch resolves against this element's own monospaced font, so this is exactly
+     80 characters. 88% of the recipes fit inside it untouched; the rest were
+     never wrapped by hand and are meant to flow. */
+  max-width: 80ch;
 }
 @media (min-width: 34rem) { .recipe-body { font-size: 1rem; } }
+
+/* A recipe page is wider than the rest of the site because it has to be:
+   64ch of serif is only about 53 monospaced characters, which wrapped lines
+   that Joe had wrapped himself. Sized so 80 columns fits at 16px. */
+.page-recipe { max-width: 52rem; }
 
 .pager-prev, .pager-next { max-width: 46%; }
 .pager-next { text-align: right; }
