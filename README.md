@@ -193,8 +193,13 @@ real one is missed too.
 It deliberately makes no live calls to Cloudflare Images or Resend: doing so every five
 minutes would spend quota and turn their blips into our alerts.
 
-Turn on **SSL expiry notifications** as well. Vercel auto-renews, but a failed renewal
-takes the site down in every browser at once.
+**SSL and domain expiry monitoring are paid features** despite what UptimeRobot's pricing
+page implies, so they are not in use. That is an acceptable gap: both monitors above run
+over HTTPS, so an expired certificate fails their TLS handshake and both alert within five
+minutes. What is lost is only the advance warning — Vercel renews Let's Encrypt certs
+automatically, so a lapse would be a surprise either way.
+
+Domain expiry is different, and no monitor covers it: see the note below.
 
 ### Getting alerts to more than one person
 
