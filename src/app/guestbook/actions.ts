@@ -1,7 +1,9 @@
 "use server";
 
 import { headers } from "next/headers";
+import { after } from "next/server";
 import { revalidatePath } from "next/cache";
+import { notifyGuestbookEntry } from "@/lib/notify";
 import { db } from "@/lib/db";
 import { hashIp } from "@/lib/ip";
 import { recentCountForIp } from "@/lib/guestbook";
@@ -81,5 +83,11 @@ export async function signGuestbook(
   }
 
   revalidatePath("/guestbook");
+
+  // after() runs once the response has been sent, so the writer isn't kept
+  // waiting on an email round trip. It also survives the serverless function
+  // returning, which a bare floating promise would not.
+  after(() => notifyGuestbookEntry({ name, message, email: email || null }));
+
   return { status: "ok", message: "Thank you for writing." };
 }

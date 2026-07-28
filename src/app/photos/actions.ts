@@ -1,7 +1,9 @@
 "use server";
 
 import { headers } from "next/headers";
+import { after } from "next/server";
 import { revalidatePath } from "next/cache";
+import { notifyPhotoSubmission } from "@/lib/notify";
 import { db } from "@/lib/db";
 import { hashIp } from "@/lib/ip";
 import { verifyTurnstile } from "@/lib/turnstile";
@@ -132,5 +134,16 @@ export async function recordPhotos(
   }
 
   revalidatePath("/admin");
+
+  // One email for the whole batch, after the response is sent.
+  after(() =>
+    notifyPhotoSubmission({
+      count: saved,
+      submitter: name || null,
+      email: mail || null,
+      captions: submissions.map((s) => s.caption.trim()).filter(Boolean),
+    }),
+  );
+
   return { ok: true, saved };
 }
