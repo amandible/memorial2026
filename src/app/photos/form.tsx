@@ -39,7 +39,15 @@ export default function PhotoForm({ siteKey }: { siteKey?: string }) {
   }
 
   function resetTurnstile() {
-    (window as { turnstile?: { reset: () => void } }).turnstile?.reset();
+    // Turnstile removes its own widget on some failures (110200, for one), and
+    // reset() then throws "Nothing to reset found for provided container".
+    // That turned a clear error into the generic catch-all. Never let cleanup
+    // become the reported failure.
+    try {
+      (window as { turnstile?: { reset: () => void } }).turnstile?.reset();
+    } catch (e) {
+      console.warn("Turnstile reset failed (widget already gone):", e);
+    }
   }
 
   async function submit(e: React.FormEvent) {

@@ -14,7 +14,12 @@ export default function SubscribeForm({ siteKey }: { siteKey?: string }) {
   // so the widget has to be reset or the next attempt fails for the wrong reason.
   useEffect(() => {
     if (state.status === "error" && siteKey) {
-      (window as { turnstile?: { reset: () => void } }).turnstile?.reset();
+      // reset() throws if Turnstile has already torn the widget down.
+      try {
+        (window as { turnstile?: { reset: () => void } }).turnstile?.reset();
+      } catch (e) {
+        console.warn("Turnstile reset failed (widget already gone):", e);
+      }
     }
   }, [state, siteKey]);
 
