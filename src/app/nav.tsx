@@ -2,13 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-
-export const SECTIONS = [
-  { href: "/service", label: "The Service" },
-  { href: "/photos", label: "Photographs" },
-  { href: "/guestbook", label: "Guestbook" },
-  { href: "/subscribe", label: "Stay in touch" },
-];
+import { SECTIONS } from "@/lib/sections";
 
 export default function Nav() {
   const pathname = usePathname();

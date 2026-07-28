@@ -176,6 +176,9 @@ body {
   margin: var(--s4) 0 0;
   text-wrap: balance;
 }
+.plainlist { list-style: none; padding: 0; margin: var(--s3) 0 0; }
+.plainlist li { margin-bottom: var(--s2); }
+
 .contact-note {
   margin-top: var(--s5);
   padding-top: var(--s3);

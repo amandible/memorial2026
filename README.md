@@ -137,7 +137,27 @@ Two deliberate choices worth knowing before you fight them:
 | Admin notifications | Resend | Not wired up yet. Notifications only, not the mailing list |
 | Uptime alerts | UptimeRobot | Not set up yet — do not skip this |
 
-All accounts under `joeweismanmemorial@gmail.com`, not a personal address.
+### How each account is logged into
+
+Everything is under `joeweismanmemorial@gmail.com` rather than a personal address —
+except the GitHub repo, which is on Jazz's personal account deliberately (the repo isn't
+load-bearing for uptime; losing it means you can't *change* the site, not that it goes down).
+
+| Account | Sign-in method |
+|---|---|
+| Cloudflare | Its own account — email + password, using the memorial Gmail |
+| Vercel | **Google OAuth** via the memorial Gmail |
+| Neon | **Google OAuth** via the memorial Gmail |
+| GitHub | Jazz's personal account (`jazzlw`) |
+
+> **⚠️ The Gmail is a single point of failure for Vercel and Neon.** Because both use
+> Google sign-in, losing access to `joeweismanmemorial@gmail.com` means losing the host
+> and the database with no separate password to fall back on. Cloudflare is safer here —
+> it has its own credentials, so it survives independently.
+>
+> Mitigate: put a recovery phone and a recovery email on the Google account, save the
+> 2FA backup codes somewhere a family member can reach, and make sure at least one other
+> person can get into that Gmail. Do this before the site is something anyone relies on.
 
 Secrets live in Vercel's environment variables, never in the repo. `.env.example` lists
 what's needed; copy it to `.env.local` for development.
