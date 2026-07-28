@@ -102,8 +102,16 @@ export default function PhotoForm({ siteKey }: { siteKey?: string }) {
       setSaved(rec.saved);
       setPicked([]);
     } catch (err) {
-      console.error(err);
-      setError("Something went wrong. Please try again, or write to contact@joeweisman.org.");
+      // The generic message is what a visitor should see, but swallowing the
+      // cause made a real failure undiagnosable. Log it, and surface it in
+      // development where only we are looking.
+      console.error("Photo submission failed:", err);
+      const detail = err instanceof Error ? err.message : String(err);
+      setError(
+        process.env.NODE_ENV === "development"
+          ? `Something went wrong: ${detail}`
+          : "Something went wrong. Please try again, or write to contact@joeweisman.org.",
+      );
       resetTurnstile();
     } finally {
       setBusy(false);

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import PhotoForm from "./form";
 import { getApprovedPhotos } from "@/lib/photos";
-import { imageUrl } from "@/lib/cf-images";
+import { imageUrl, imagesConfigured } from "@/lib/cf-images";
 
 export const metadata: Metadata = { title: "Photographs" };
 
@@ -30,8 +30,15 @@ export default async function PhotosPage() {
         </p>
       ) : photos.length === 0 ? (
         <p className="prose empty-state">
-          The gallery is still being put together. If you have photographs of
-          Joe, <a href="#add">please send them</a> — they&rsquo;ll appear here.
+          The gallery is still being put together.{" "}
+          {imagesConfigured() ? (
+            <>
+              If you have photographs of Joe, <a href="#add">please send them</a>{" "}
+              &mdash; they&rsquo;ll appear here.
+            </>
+          ) : (
+            <>If you have photographs of Joe, there will be a way to add them shortly.</>
+          )}
         </p>
       ) : (
         <div className="gallery">
@@ -59,7 +66,21 @@ export default async function PhotosPage() {
         </div>
       )}
 
-      <PhotoForm siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY} />
+      {/* Don't offer an upload form that cannot accept an upload. Without
+          credentials the submission would fail after the visitor had chosen
+          files and waited — say so up front instead. */}
+      {imagesConfigured() ? (
+        <PhotoForm siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY} />
+      ) : (
+        <section id="add" className="add-entry">
+          <h2>Send your photographs</h2>
+          <p className="prose">
+            Photo submissions aren&rsquo;t open quite yet. If you have pictures of
+            Joe, please start looking them out &mdash; or send them now to{" "}
+            <a href="mailto:contact@joeweisman.org">contact@joeweisman.org</a>.
+          </p>
+        </section>
+      )}
     </main>
   );
 }
