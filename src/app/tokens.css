@@ -18,6 +18,7 @@
   /* Type — committed .woff2, wired up in fonts.ts */
   --body:    var(--font-body), Georgia, "Times New Roman", serif;
   --display: var(--font-display), Georgia, serif;
+  --mono:    var(--font-mono), ui-monospace, Menlo, Consolas, monospace;
 
   --size-body:    1.1875rem;  /* 19px */
   --size-small:   1rem;
@@ -228,6 +229,64 @@ body {
   width: 1px;
   height: 1px;
   overflow: hidden;
+}
+
+/* ---- Recipes ----
+   These were plain text files. The monospace isn't decoration, it's the
+   artifact — so the body is set exactly as typed and only the surrounding
+   furniture uses the site's serif. */
+
+.recipe-index { list-style: none; margin: var(--s5) 0 0; padding: 0; }
+.recipe-index li { border-bottom: 1px solid var(--rule); }
+.recipe-index li:last-child { border-bottom: 0; }
+.recipe-index a {
+  display: flex; flex-wrap: wrap; align-items: baseline;
+  gap: .2rem var(--s3); justify-content: space-between;
+  padding: .7rem 0; text-decoration: none; color: var(--text);
+}
+.recipe-index a:hover .recipe-index-title,
+.recipe-index a:focus-visible .recipe-index-title { text-decoration: underline; }
+.recipe-index-title { color: var(--link); }
+/* His own filename, kept visible — the extensions are a filing system he invented. */
+.recipe-index-file {
+  font-family: var(--mono); font-size: .85rem; color: var(--muted);
+  white-space: nowrap;
+}
+
+.crumb { margin: 0 0 var(--s3); font-size: var(--size-small); }
+
+.recipe-title {
+  font-family: var(--display); font-weight: 400;
+  font-size: clamp(1.9rem, 5.5vw, 2.4rem); line-height: var(--leading-tight);
+  margin: 0; text-wrap: balance;
+}
+.recipe-file {
+  font-family: var(--mono); font-size: .9rem; color: var(--muted);
+  margin: .5rem 0 0;
+}
+
+.recipe-body {
+  font-family: var(--mono);
+  /* Smaller than body text: monospace runs wide, and these lines were written
+     for an 80-column terminal. */
+  font-size: .95rem;
+  line-height: 1.55;
+  /* pre-wrap, not pre: his line breaks and spacing are preserved, but the
+     handful of very long unwrapped lines wrap instead of scrolling the page. */
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  margin: 0;
+  padding: var(--s3) 0 0;
+  tab-size: 8;
+}
+@media (min-width: 34rem) { .recipe-body { font-size: 1rem; } }
+
+.pager-prev, .pager-next { max-width: 46%; }
+.pager-next { text-align: right; }
+
+.prose code {
+  font-family: var(--mono); font-size: .9em;
+  background: var(--bg-sunk); padding: .1em .35em; border-radius: 2px;
 }
 
 /* ---- Guestbook ---- */

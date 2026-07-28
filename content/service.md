@@ -5,11 +5,6 @@ title: "A Celebration of Joe's Life"
 There will be a celebration of Joe's life on **Saturday, September 19th**, in
 Corvallis, Oregon.
 
-A celebration is the right word for it, and the one he would have chosen. He had
-no patience for occasions marked out of obligation — he refused his own birthday
-for most of his life — but he never once missed a wedding or a funeral if someone
-he loved was there.
-
 The time and the place are still being arranged. They will be posted here as soon
 as they are settled, along with anything useful about parking and getting there.
 

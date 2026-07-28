@@ -9,5 +9,6 @@ export const SECTIONS = [
   { href: "/service", label: "The Service" },
   { href: "/photos", label: "Photographs" },
   { href: "/guestbook", label: "Guestbook" },
+  { href: "/recipes", label: "Recipes" },
   { href: "/subscribe", label: "Stay in touch" },
 ] as const;

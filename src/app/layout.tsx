@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { bodySerif, displaySerif } from "./fonts";
+import { bodySerif, displaySerif, mono } from "./fonts";
 import Nav from "./nav";
 import "./tokens.css";
 
@@ -54,7 +54,7 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={`${bodySerif.variable} ${displaySerif.variable}`}>
+    <html lang="en" className={`${bodySerif.variable} ${displaySerif.variable} ${mono.variable}`}>
       <body>
         <a href="#main" className="skip">Skip to content</a>
         <Nav />
