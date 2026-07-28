@@ -1,0 +1,222 @@
+/* Joe Weisman Memorial — design tokens
+ * Implements PLAN.md §11. Every text pair verified at WCAG AAA (>=7:1) with a
+ * computed contrast check, not by eye. Rules and dividers are deliberately
+ * low-contrast: they are decorative, not informational.
+ */
+
+:root {
+  /* Light — warm cream, never pure white */
+  --bg:        #FAF8F3;
+  --bg-sunk:   #F3F0E8;   /* photo wells, form backgrounds */
+  --text:      #1F1B16;   /* 16.13:1  AAA */
+  --muted:     #575044;   /*  7.51:1  AAA — dates, captions, secondary */
+  --link:      #2A5470;   /*  7.61:1  AAA */
+  --rule:      #C4B9A6;   /* decorative hairline */
+  --focus:     #2A5470;
+  --todo:      #B8892A;   /* unfilled draft placeholders, dev only */
+
+  /* Type — committed .woff2, wired up in fonts.ts */
+  --body:    var(--font-body), Georgia, "Times New Roman", serif;
+  --display: var(--font-display), Georgia, serif;
+
+  --size-body:    1.1875rem;  /* 19px */
+  --size-small:   1rem;
+  --size-dates:   1.2rem;
+  --size-h2:      1.5rem;
+  --leading:      1.65;
+  --leading-tight:1.25;
+  --measure:      64ch;
+
+  /* Spacing — 8px base */
+  --s1: .5rem;  --s2: 1rem;   --s3: 1.5rem;
+  --s4: 2rem;   --s5: 3rem;   --s6: 4.5rem;  --s7: 7rem;
+}
+
+/* Warm dark, not grey — a cold grey memorial reads as clinical.
+   Phones default to dark and a full-screen cream page at night is harsh. */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg:      #17130F;
+    --bg-sunk: #1F1A15;
+    --text:    #EDE6DA;   /* 14.90:1  AAA */
+    --muted:   #ADA294;   /*  7.37:1  AAA */
+    --link:    #8FB8D4;   /*  8.78:1  AAA */
+    --rule:    #3D352B;
+    --focus:   #8FB8D4;
+    --todo:    #D6A94B;
+  }
+}
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--body);
+  font-size: var(--size-body);
+  line-height: var(--leading);
+  font-kerning: normal;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+.page {
+  max-width: var(--measure);
+  margin-inline: auto;
+  padding: clamp(2.25rem, 6vw, 4.5rem) 1.35rem var(--s6);
+}
+
+/* Hero plate matches the text measure exactly. The portrait is square and already
+   tall; widening it past the column makes it announce itself rather than introduce him. */
+.portrait { margin: 0 0 2.5rem; }
+.portrait img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border: 1px solid var(--rule);
+  background: var(--bg-sunk);
+}
+
+.name {
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: clamp(2.6rem, 8.5vw, 3.7rem);
+  line-height: 1.05;
+  text-align: center;
+  margin: 0;
+  text-wrap: balance;
+  letter-spacing: .005em;
+}
+
+/* Full dates in normal case, not tracked-out capitals — the capitals version
+   wrapped awkwardly on a phone and read as forced. */
+.dates {
+  text-align: center;
+  color: var(--muted);
+  font-family: var(--display);
+  font-size: var(--size-dates);
+  margin: .9rem 0 0;
+  font-variant-numeric: oldstyle-nums;
+  text-wrap: balance;
+}
+
+.rule { border: 0; border-top: 1px solid var(--rule); width: 5rem; margin: 2.75rem auto 2.5rem; }
+
+.prose p { margin: 0 0 1.45em; text-wrap: pretty; }
+.prose p:last-child { margin-bottom: 0; }
+.prose h2 { font-family: var(--display); font-weight: 400; font-size: var(--size-h2);
+            line-height: var(--leading-tight); margin: var(--s5) 0 var(--s2); }
+.prose em { font-style: italic; }
+/* Classical opening — gives the text an entrance. */
+.prose > p:first-of-type::first-line { font-variant-caps: small-caps; letter-spacing: .03em; }
+
+/* ---- Site header ---- */
+
+.sitenav { border-bottom: 1px solid var(--rule); padding: var(--s3) 1.35rem; }
+.sitenav-inner {
+  max-width: var(--measure);
+  margin-inline: auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: center;
+  gap: .35rem var(--s3);
+}
+.sitenav ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: .35rem var(--s3);
+}
+.sitenav a, .sitenav span {
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  padding-bottom: 2px;
+}
+.sitenav a { color: var(--link); }
+.sitenav a:hover, .sitenav a:focus-visible { border-bottom-color: currentColor; }
+/* The current section reads as a label, not a link to where you already are. */
+.sitenav [aria-current="page"] { color: var(--muted); }
+
+.wordmark {
+  font-family: var(--display);
+  font-size: 1.35rem;
+  /* Own line on narrow screens so the sections don't wrap around the name. */
+  flex-basis: 100%;
+  text-align: center;
+}
+@media (min-width: 34rem) {
+  .sitenav-inner { justify-content: space-between; }
+  .wordmark { flex-basis: auto; text-align: left; }
+}
+
+.skip {
+  position: absolute;
+  left: -9999px;
+  background: var(--bg);
+  color: var(--link);
+  padding: var(--s2) var(--s3);
+  z-index: 10;
+}
+.skip:focus { left: var(--s2); top: var(--s2); }
+
+/* ---- Section pages ---- */
+
+.page-title {
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: clamp(2rem, 6vw, 2.6rem);
+  line-height: var(--leading-tight);
+  text-align: center;
+  margin: var(--s4) 0 0;
+  text-wrap: balance;
+}
+.contact-note {
+  margin-top: var(--s5);
+  padding-top: var(--s3);
+  border-top: 1px solid var(--rule);
+  color: var(--muted);
+  font-size: var(--size-small);
+  text-align: center;
+}
+
+a { color: var(--link); text-underline-offset: .16em; text-decoration-thickness: .06em; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
+
+/* Nothing moves. PLAN.md §11. */
+*, *::before, *::after { animation-duration: 0s !important; transition-duration: 0s !important; }
+
+/* Unfilled draft placeholders. Visible in development so they cannot ship unnoticed. */
+mark.todo {
+  background: none;
+  color: var(--todo);
+  border-bottom: 2px dotted currentColor;
+  font-weight: 600;
+  padding: 0 .1em;
+}
+
+/* Guestbook — simple stream. Newest first, no truncation, plain text only. */
+.entry { padding-block: var(--s4); border-bottom: 1px solid var(--rule); }
+.entry:last-child { border-bottom: 0; }
+.entry-head {
+  display: flex; flex-wrap: wrap; gap: var(--s1) var(--s3);
+  align-items: baseline; justify-content: space-between; margin-bottom: var(--s2);
+}
+.entry-name { font-weight: 600; }
+.entry-date { color: var(--muted); font-size: var(--size-small); font-variant-numeric: oldstyle-nums; }
+/* pre-line keeps the paragraph breaks people type without interpreting any markup.
+   Messages are escaped server-side and never rendered as HTML. */
+.entry-message { white-space: pre-line; margin: 0; overflow-wrap: break-word; }
+
+/* Photos — even grid, generous gutters, mixed aspect ratios uncropped */
+.gallery {
+  display: grid; gap: var(--s3);
+  grid-template-columns: repeat(auto-fill, minmax(min(240px, 100%), 1fr));
+}
+.gallery img { width: 100%; height: auto; display: block; background: var(--bg-sunk); }
+.gallery figcaption { color: var(--muted); font-size: var(--size-small); font-style: italic; margin-top: var(--s1); }
