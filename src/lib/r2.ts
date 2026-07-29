@@ -55,7 +55,9 @@ export async function putObject(
 
   const res = await client().fetch(endpoint(key), {
     method: "PUT",
-    body: bytes,
+    // Uint8Array is a valid fetch body at runtime; the DOM lib's BodyInit type
+    // is narrower than reality here.
+    body: bytes as unknown as BodyInit,
     headers: {
       "content-type": contentType,
       "content-length": String(bytes.byteLength),
