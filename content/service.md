@@ -20,12 +20,13 @@ so nobody has to work it out alone.
 
 ## Photographs
 
-If you have photographs of Joe, please start looking them out. Anything at all —
-the boat, the commune, a sauna he built, a kitchen he improved, a project he
+If you have photographs of Joe, [you can send them here](/photos). Anything at all
+— the boat, the commune, a sauna he built, a kitchen he improved, a project he
 talked you into. Pictures sent in before the 19th can be part of the day itself.
 
-There will be a way to [send them here](/photos) shortly. You are very welcome to
-bring prints with you as well.
+Photos straight off a phone are fine, and you can add a note to each one saying
+who is in it or where it was. You are very welcome to bring prints with you as
+well.
 
 ## In the meantime
 
