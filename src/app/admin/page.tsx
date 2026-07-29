@@ -49,18 +49,21 @@ export default async function AdminPage() {
       (select count(*)::int from guestbook_entries where status = 'published') as published,
       (select count(*)::int from guestbook_entries where status = 'removed') as removed,
       (select count(*)::int from photos where status = 'pending') as photos_pending,
-      (select count(*)::int from photos where status = 'approved') as photos_approved
+      (select count(*)::int from photos where status = 'approved') as photos_approved,
+      (select count(*)::int from photos
+        where status = 'approved' and archived_at is null) as photos_unarchived
   `) as {
     contacts: number;
     published: number;
     removed: number;
     photos_pending: number;
     photos_approved: number;
+    photos_unarchived: number;
   }[];
 
   // Pending first and oldest first, so nothing waits unnoticed.
   const photos = (await db()`
-    select id, storage_ref, caption, submitter, email, status, created_at
+    select id, storage_ref, caption, submitter, email, status, created_at, archived_at
     from photos
     order by (status = 'pending') desc, created_at
     limit 200
@@ -72,6 +75,7 @@ export default async function AdminPage() {
     email: string | null;
     status: "pending" | "approved" | "rejected";
     created_at: Date;
+    archived_at: Date | null;
   }[];
 
   return (
@@ -107,7 +111,23 @@ export default async function AdminPage() {
           <dt>Photos live</dt>
           <dd>{counts.photos_approved}</dd>
         </div>
+        {/* An approved photo that isn't backed up is the one failure here that
+            would otherwise be invisible. Only shown when it is non-zero. */}
+        {counts.photos_unarchived > 0 && (
+          <div className="stat-attention">
+            <dt>Not backed up</dt>
+            <dd>{counts.photos_unarchived}</dd>
+          </div>
+        )}
       </dl>
+
+      {counts.photos_unarchived > 0 && (
+        <p className="form-error">
+          {counts.photos_unarchived}{" "}
+          {counts.photos_unarchived === 1 ? "photograph is" : "photographs are"} live but not
+          yet copied to the archive. Run <code>npm run archive</code> to fix.
+        </p>
+      )}
 
       <h2>Photographs</h2>
       {photos.length === 0 ? (
@@ -120,6 +140,9 @@ export default async function AdminPage() {
               <img src={imageUrl(p.storage_ref)} alt={p.caption ?? "Submitted photograph"} loading="lazy" />
               <figcaption>
                 <span className={`tag tag-${p.status}`}>{p.status}</span>
+                {p.status === "approved" && !p.archived_at && (
+                  <span className="tag tag-pending">not backed up</span>
+                )}
                 {p.caption && <span className="mod-caption">{p.caption}</span>}
                 <span className="mod-meta">
                   {p.submitter ?? "anonymous"}

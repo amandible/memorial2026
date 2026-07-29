@@ -1,6 +1,5 @@
 "use server";
 
-import { after } from "next/server";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { deleteImage } from "@/lib/cf-images";
@@ -57,16 +56,25 @@ export async function setPhotoStatus(
   await db()`
     update photos set status = ${status}, reviewed_at = now() where id = ${id}::uuid
   `;
-  revalidatePath("/admin");
-  revalidatePath("/photos");
 
   // Approving is the point at which the site commits to keeping a photograph, so
-  // that is when it gets copied out of Cloudflare into R2. Runs after the
-  // response so the click isn't waiting on it, and never throws — a failed
-  // backup must not make approving fail. `npm run archive` catches any misses.
+  // that is when it gets copied out of Cloudflare into R2.
+  //
+  // Deliberately awaited rather than deferred with after(). The first version
+  // used after() so the click wouldn't wait on the copy — and the archive then
+  // silently never happened in production, with no way to tell whether the
+  // callback had run and failed or simply never run. For a backup of
+  // irreplaceable photographs, "probably ran" is not good enough: an extra
+  // second on a button an admin presses a few times a week buys certainty.
+  //
+  // Still never throws. A failed copy leaves archived_at null for
+  // `npm run archive` to find, and must not stop the photo being approved.
   if (status === "approved") {
-    after(() => archivePhotoQuietly(id));
+    await archivePhotoQuietly(id);
   }
+
+  revalidatePath("/admin");
+  revalidatePath("/photos");
 }
 
 /** Delete a rejected photo for good, removing it from Cloudflare Images too. */
