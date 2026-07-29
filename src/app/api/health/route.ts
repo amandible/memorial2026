@@ -48,6 +48,12 @@ export async function GET() {
     process.env.CF_IMAGES_ACCOUNT_ID && process.env.NEXT_PUBLIC_CF_IMAGES_HASH,
   );
   degraded.notifications = Boolean(process.env.RESEND_API_KEY && process.env.RESEND_FROM);
+  // Not an outage if absent — approvals still work — but photographs would stop
+  // being backed up silently, which is exactly the kind of thing nobody notices.
+  degraded.photoArchive = Boolean(
+    process.env.R2_ACCOUNT_ID && process.env.R2_ACCESS_KEY_ID &&
+      process.env.R2_SECRET_ACCESS_KEY && process.env.R2_BUCKET,
+  );
 
   const ok = Object.values(critical).every(Boolean);
 
