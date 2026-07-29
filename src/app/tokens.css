@@ -468,9 +468,14 @@ mark.todo {
   border: 0;
   padding: 0;
   background: transparent;
-  max-width: min(96vw, 1400px);
-  max-height: 94vh;
   color: var(--text);
+  /* An explicit width, not max-width. A <dialog> defaults to width:fit-content,
+     and with a flex column inside whose size depends on an image that is itself
+     max-width:100% of that column, the width resolves circularly — it settled
+     at roughly 40% of the window for every photo regardless of shape, so a
+     landscape one got the same width as a square one and almost no height. */
+  width: min(94vw, 1600px);
+  max-height: 96vh;
 }
 .lightbox::backdrop { background: rgba(10, 8, 6, .88); }
 .lightbox-inner {
@@ -479,15 +484,16 @@ mark.todo {
   padding: var(--s2);
   display: flex;
   flex-direction: column;
-  gap: var(--s2);
+  gap: .75rem;
+  max-height: 96vh;
 }
 .lightbox-inner img {
   display: block;
-  max-width: 100%;
-  /* Leave room for the controls and caption below. */
-  max-height: 72vh;
-  width: auto;
-  margin-inline: auto;
+  /* Fill the panel and let object-fit do the scaling: a landscape photo uses the
+     full width, a portrait one the full height, neither is distorted, and the
+     size no longer depends on the container guessing. */
+  width: 100%;
+  max-height: min(82vh, calc(96vh - 8rem));
   object-fit: contain;
 }
 .lightbox-bar {
