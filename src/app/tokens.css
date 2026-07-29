@@ -417,10 +417,80 @@ mark.todo {
    Messages are escaped server-side and never rendered as HTML. */
 .entry-message { white-space: pre-line; margin: 0; overflow-wrap: break-word; }
 
-/* Photos — even grid, generous gutters, mixed aspect ratios uncropped */
+/* ---- Photos ----
+   The gallery breaks out of the reading column. 64 characters is the right
+   measure for prose and the wrong one for photographs — on a desktop it left
+   them at about 280px. Everything else on the page stays at the measure. */
+
+.page-photos { max-width: 74rem; }
+.page-photos > :not(.gallery) { max-width: var(--measure); margin-inline: auto; }
+
 .gallery {
-  display: grid; gap: var(--s3);
-  grid-template-columns: repeat(auto-fill, minmax(min(240px, 100%), 1fr));
+  list-style: none;
+  padding: 0;
+  margin: var(--s4) 0 0;
+  display: grid;
+  gap: var(--s4) var(--s3);
+  grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr));
 }
-.gallery img { width: 100%; height: auto; display: block; background: var(--bg-sunk); }
-.gallery figcaption { color: var(--muted); font-size: var(--size-small); font-style: italic; margin-top: var(--s1); }
+.gallery > li { margin: 0; }
+
+/* The thumbnail is a button: it opens the larger view, so it should be
+   focusable and announce itself as an action. */
+.gallery-item {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 1px solid var(--rule);
+  background: var(--bg-sunk);
+  cursor: zoom-in;
+}
+.gallery-item img { width: 100%; height: auto; display: block; }
+.gallery-item:hover { border-color: var(--muted); }
+.gallery-item:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
+
+.gallery-caption {
+  color: var(--muted);
+  font-size: var(--size-small);
+  font-style: italic;
+  margin: var(--s1) 0 0;
+  text-wrap: pretty;
+}
+.gallery-caption .credit { font-style: normal; }
+
+/* Native <dialog>: keyboard dismissal, focus trapping and a backdrop without a
+   lightbox library. */
+.lightbox {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  max-width: min(96vw, 1400px);
+  max-height: 94vh;
+  color: var(--text);
+}
+.lightbox::backdrop { background: rgba(10, 8, 6, .88); }
+.lightbox-inner {
+  background: var(--bg);
+  border: 1px solid var(--rule);
+  padding: var(--s2);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+}
+.lightbox-inner img {
+  display: block;
+  max-width: 100%;
+  /* Leave room for the controls and caption below. */
+  max-height: 72vh;
+  width: auto;
+  margin-inline: auto;
+  object-fit: contain;
+}
+.lightbox-bar {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: var(--s2); flex-wrap: wrap;
+}
+.lightbox-count { color: var(--muted); font-size: var(--size-small); font-variant-numeric: tabular-nums; }
+.lightbox-caption { margin: 0; text-wrap: pretty; }
+.lightbox-caption .credit { color: var(--muted); }
+.lightbox-close { align-self: flex-end; }

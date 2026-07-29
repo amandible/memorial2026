@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import PhotoForm from "./form";
+import Gallery from "./gallery";
 import { getApprovedPhotos } from "@/lib/photos";
 import { imageUrl, imagesConfigured } from "@/lib/cf-images";
 
@@ -20,7 +21,7 @@ export default async function PhotosPage() {
   }
 
   return (
-    <main className="page" id="main">
+    <main className="page page-photos" id="main">
       <h1 className="page-title">Photographs</h1>
       <hr className="rule" />
 
@@ -41,29 +42,14 @@ export default async function PhotosPage() {
           )}
         </p>
       ) : (
-        <div className="gallery">
-          {photos.map((p) => (
-            <figure key={p.id}>
-              {/* Served straight from Cloudflare Images, never through
-                  next/image: that runs sharp, and these came from strangers.
-                  See PLAN.md §12. */}
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={imageUrl(p.storage_ref)}
-                alt={p.caption ?? "A photograph of Joe Weisman"}
-                loading="lazy"
-                decoding="async"
-              />
-              {(p.caption || p.submitter) && (
-                <figcaption>
-                  {p.caption}
-                  {p.caption && p.submitter && " "}
-                  {p.submitter && <span className="credit">&mdash; {p.submitter}</span>}
-                </figcaption>
-              )}
-            </figure>
-          ))}
-        </div>
+        <Gallery
+          photos={photos.map((p) => ({
+            id: p.id,
+            src: imageUrl(p.storage_ref),
+            caption: p.caption,
+            submitter: p.submitter,
+          }))}
+        />
       )}
 
       {/* Don't offer an upload form that cannot accept an upload. Without

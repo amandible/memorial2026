@@ -1,0 +1,146 @@
+"use client";
+
+import { useCallback, useEffect, useRef, useState } from "react";
+
+export type GalleryPhoto = {
+  id: string;
+  src: string;
+  caption: string | null;
+  submitter: string | null;
+};
+
+/**
+ * The gallery, with a click-to-enlarge view.
+ *
+ * Uses a native <dialog> rather than a lightbox library: it gives keyboard
+ * dismissal, focus trapping and a backdrop for free, and adds no dependency to
+ * a project that is trying to keep them countable.
+ *
+ * Images are plain <img> pointing at Cloudflare Images, never next/image. That
+ * optimizer runs sharp over the file, and these come from strangers — the
+ * security boundary in PLAN.md §12.
+ */
+export default function Gallery({ photos }: { photos: GalleryPhoto[] }) {
+  const [openIndex, setOpenIndex] = useState<number | null>(null);
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  // Return focus to the thumbnail that was clicked, rather than the top of the page.
+  const openerRef = useRef<HTMLButtonElement | null>(null);
+
+  const close = useCallback(() => {
+    dialogRef.current?.close();
+  }, []);
+
+  const step = useCallback(
+    (delta: number) => {
+      setOpenIndex((i) => {
+        if (i === null) return i;
+        const next = i + delta;
+        return next < 0 || next >= photos.length ? i : next;
+      });
+    },
+    [photos.length],
+  );
+
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    if (openIndex !== null && !dialog.open) dialog.showModal();
+  }, [openIndex]);
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (openIndex === null) return;
+      if (e.key === "ArrowRight") { e.preventDefault(); step(1); }
+      if (e.key === "ArrowLeft") { e.preventDefault(); step(-1); }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [openIndex, step]);
+
+  const current = openIndex === null ? null : photos[openIndex];
+
+  return (
+    <>
+      <ul className="gallery">
+        {photos.map((p, i) => (
+          <li key={p.id}>
+            <button
+              type="button"
+              className="gallery-item"
+              onClick={(e) => {
+                openerRef.current = e.currentTarget;
+                setOpenIndex(i);
+              }}
+              aria-label={p.caption ? `Enlarge: ${p.caption}` : "Enlarge photograph"}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={p.src} alt={p.caption ?? "A photograph of Joe Weisman"} loading="lazy" decoding="async" />
+            </button>
+            {(p.caption || p.submitter) && (
+              <p className="gallery-caption">
+                {p.caption}
+                {p.caption && p.submitter && " "}
+                {p.submitter && <span className="credit">&mdash; {p.submitter}</span>}
+              </p>
+            )}
+          </li>
+        ))}
+      </ul>
+
+      <dialog
+        ref={dialogRef}
+        className="lightbox"
+        // Escape and the backdrop both close; restore focus where they left off.
+        onClose={() => {
+          setOpenIndex(null);
+          openerRef.current?.focus();
+        }}
+        onClick={(e) => {
+          // Clicking the backdrop — the dialog element itself — closes it.
+          if (e.target === dialogRef.current) close();
+        }}
+      >
+        {current && (
+          <div className="lightbox-inner">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={current.src} alt={current.caption ?? "A photograph of Joe Weisman"} />
+
+            <div className="lightbox-bar">
+              <button
+                type="button"
+                className="btn-quiet"
+                onClick={() => step(-1)}
+                disabled={openIndex === 0}
+              >
+                &larr; Previous
+              </button>
+              <span className="lightbox-count">
+                {(openIndex ?? 0) + 1} of {photos.length}
+              </span>
+              <button
+                type="button"
+                className="btn-quiet"
+                onClick={() => step(1)}
+                disabled={openIndex === photos.length - 1}
+              >
+                Next &rarr;
+              </button>
+            </div>
+
+            {(current.caption || current.submitter) && (
+              <p className="lightbox-caption">
+                {current.caption}
+                {current.caption && current.submitter && " "}
+                {current.submitter && <span className="credit">&mdash; {current.submitter}</span>}
+              </p>
+            )}
+
+            <button type="button" className="lightbox-close btn-quiet" onClick={close}>
+              Close
+            </button>
+          </div>
+        )}
+      </dialog>
+    </>
+  );
+}
