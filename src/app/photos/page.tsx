@@ -25,6 +25,10 @@ export default async function PhotosPage() {
       <h1 className="page-title">Photographs</h1>
       <hr className="rule" />
 
+      <p className="muted-note">
+        If some of the pictures are not loading, please hit your browser reload button.
+      </p>
+
       {failed ? (
         <p className="form-error">
           The gallery can&rsquo;t be loaded just now. Please try again shortly.

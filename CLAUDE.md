@@ -6,8 +6,9 @@
 
 A memorial site for Joe Weisman (1944–2026), built by his child Jazz. Next.js 16
 (App Router, TypeScript) on Vercel, deploying from `main`. Obituary and service
-details from Markdown in `content/`; a photo gallery with public submissions, a
-guestbook, and email collection are still to come.
+details render from Markdown in `content/`; a photo gallery with public submissions,
+a guestbook, and email collection are live (see `README.md` "The services" for what's
+deployed where).
 
 Treat the subject with care. The people reading this site are grieving, and much
 of the content is about a real person recently dead. Plainness beats cleverness in
@@ -29,6 +30,82 @@ fnm use 22
 
 `npm run dev -- -p 3117`. Port 3117, not 3000 — Grafana usually holds 3000 on this
 machine. Never kill a process by name to free a port; find another port.
+
+## Commands
+
+| Command | What it does |
+|---|---|
+| `npm run dev -- -p 3117` | Dev server on port 3117 (see Environment above) |
+| `npm run build` | Production build — run before pushing anything structural |
+| `npm start` | Serve the production build locally |
+| `npm run lint` | ESLint (`eslint-config-next` core-web-vitals + typescript) |
+| `npm test` | Runs `tests/*.test.mts` on Node's built-in test runner, no test framework dependency |
+| `npm run migrate` | Applies any unapplied numbered `.sql` file in `db/` against Neon |
+| `npm run archive` | Copies any approved photo not yet backed up to R2 |
+| `npm run archive -- --pull` | Downloads the whole R2 photo archive to `media/archive/` (gitignored) |
+
+Single test file: `node --experimental-strip-types --test tests/turnstile.test.mts`.
+
+Run `npm test` before pushing anything touching `src/lib/` — the tests cover the
+parts where a mistake is expensive and silent (a rejected Turnstile token being
+refused even under the lenient outage policy, an unset `ADMIN_PASSWORD` locking
+everyone out, a failing notification never throwing).
+
+## Architecture
+
+**Content vs. app code.** `content/*.md` (obituary, service) is read from the
+filesystem and rendered by `src/lib/content.ts` via `marked` — this is the *only*
+place `dangerouslySetInnerHTML` is used, because it's our own trusted Markdown.
+`content/recipes/` is the opposite case: Joe's original files, rendered byte-for-byte
+via `src/lib/recipes.ts`, never reformatted (see the README in that directory).
+Unfilled `XXXX` placeholders in content are surfaced as build-log warnings by
+`content.ts`, not build failures.
+
+**Feature module shape.** Each public form (`guestbook/`, `photos/`, `subscribe/`)
+follows the same three-file pattern: `page.tsx` (server component) + `form.tsx`
+(client component, Turnstile widget + `useActionState`) + `actions.ts` (`"use
+server"`, validates input, calls a query function in `src/lib/{feature}.ts`, then
+`revalidatePath` and an `after()`-deferred admin email via `notify.ts`). Follow this
+shape for any new visitor-facing form rather than inventing a new one.
+
+**Data layer.** Neon Postgres, reached only through `src/lib/db.ts` (a lazy pooled
+client) — the browser never touches the database directly. Schema changes are
+numbered files in `db/` (`001_init.sql`, …), applied idempotently by
+`scripts/migrate.mjs` via `npm run migrate`; there's no ORM. Per `PLAN.md` §3 M6,
+the DB is temporary — the site freezes to static in year two — so keep the schema
+flat and avoid features that assume Postgres is permanent.
+
+**Photos pipeline is two storage systems with distinct jobs**, per `PLAN.md` §5:
+R2 (`src/lib/r2.ts`, `scripts/archive.mjs`) holds every original permanently as the
+private archive; Cloudflare Images (`src/lib/cf-images.ts`) is the serving layer,
+populated only on admin approval, and handles HEIC transcode/thumbnails/delivery.
+Visitor photos are never routed through `next/image` — see the `sharp`/libvips note
+in `AGENTS.md` §12 — `next/image` is reserved for curated assets (`public/`).
+
+**Admin auth is split across two files on purpose.** `src/lib/admin-password.ts`
+holds the password/token crypto with no `next/*` imports, so it's unit-testable
+outside the framework; `src/lib/admin-auth.ts` layers the cookie session on top and
+imports `next/headers`. `src/app/admin` itself is unlinked, `noindex`, single
+shared password — moderates guestbook entries (hide/restore) and photos
+(approve/reject/delete), and exports the contacts CSV.
+
+**Turnstile verification (`src/lib/turnstile.ts`) takes an explicit
+`OutagePolicy`** (`"deny" | "allow"`) per call site — a `success: false` from
+Cloudflare is always refused, but what happens when Cloudflare itself is
+unreachable is a per-form judgment call. Guestbook denies on outage (entries
+publish immediately to a public page); forms writing only to private data may
+allow. Match this pattern for any new form rather than hardcoding one behavior.
+
+**`/api/health`** is the UptimeRobot target — it returns 503 only for a real
+visitor-facing outage (DB unreachable, or `TURNSTILE_SECRET` missing in prod).
+Optional services being merely unconfigured report as `degraded` in the body
+without tripping the alert; don't make this endpoint call out to Cloudflare Images
+or Resend, since a periodic health check would burn their quota.
+
+**Styling is one file, no build tooling.** All CSS lives in `src/app/tokens.css` —
+no Tailwind, no CSS-in-JS (`AGENTS.md`). Fonts are committed `.woff2` files loaded
+via `next/font/local` in `src/app/fonts.ts`, never `next/font/google` (that fetches
+at build time, a year-three failure mode `PLAN.md` §11 explains).
 
 ## Git commits
 

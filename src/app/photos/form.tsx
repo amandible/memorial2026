@@ -1,7 +1,7 @@
 "use client";
 
 import Script from "next/script";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { requestUploads, recordPhotos, type Submission } from "./actions";
 
 type Picked = { file: File; caption: string; key: string };
@@ -19,7 +19,34 @@ export default function PhotoForm({ siteKey }: { siteKey?: string }) {
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(0);
   const [verifying, setVerifying] = useState(false);
+  // Implicit rendering gives no event for "the widget appeared" — Cloudflare's
+  // script just scans the DOM once it loads. Polling the container for the
+  // iframe it injects is the only way to know the empty box isn't permanent.
+  const [tsStatus, setTsStatus] = useState<"loading" | "ready" | "error">("loading");
   const fileInput = useRef<HTMLInputElement>(null);
+  const turnstileBox = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!siteKey) return;
+    let cancelled = false;
+    const start = Date.now();
+
+    function tick() {
+      if (cancelled) return;
+      if (turnstileBox.current?.querySelector("iframe")) {
+        setTsStatus("ready");
+        return; // rendered — nothing left to watch for
+      }
+      // Keep polling even past the timeout: a slow connection that eventually
+      // comes through should clear the message, not get stuck showing it.
+      setTsStatus(Date.now() - start > 8_000 ? "error" : "loading");
+      setTimeout(tick, 300);
+    }
+    tick();
+    return () => {
+      cancelled = true;
+    };
+  }, [siteKey]);
 
   function onPick(list: FileList | null) {
     setError(null);
@@ -100,9 +127,18 @@ export default function PhotoForm({ siteKey }: { siteKey?: string }) {
     try {
       let token = readToken();
 
-      // Expired while they were choosing photos — refresh and wait for the new
-      // one rather than bouncing them back to the button.
       if (!token) {
+        // The passive poll (see tsStatus above) already knows the widget never
+        // rendered — no point waiting 20 seconds to discover that again.
+        if (tsStatus === "error") {
+          setError(
+            "We couldn't load the security check — this usually means an ad blocker or privacy extension is active. Try turning it off for this site and reloading, or email the photos to contact@joeweisman.org instead. Your photos and captions are still here.",
+          );
+          return;
+        }
+
+        // Expired while they were choosing photos — refresh and wait for the
+        // new one rather than bouncing them back to the button.
         setVerifying(true);
         resetTurnstile();
         token = await waitForToken();
@@ -134,25 +170,45 @@ export default function PhotoForm({ siteKey }: { siteKey?: string }) {
       const failures: string[] = [];
       for (let i = 0; i < picked.length; i++) {
         const ticket = res.tickets[i];
-        const body = new FormData();
-        body.append("file", picked[i].file);
-        try {
-          const up = await fetch(ticket.uploadURL, { method: "POST", body });
-          if (up.ok) {
-            done.push({
-              id: ticket.id,
-              handle: ticket.handle,
-              expiresAt: ticket.expiresAt,
-              caption: picked[i].caption,
-            });
-          } else {
-            const detail = await up.text().catch(() => "");
-            console.error("Upload rejected:", picked[i].file.name, up.status, detail.slice(0, 300));
-            failures.push(`${picked[i].file.name} (${up.status})`);
+        let uploaded: Submission | null = null;
+        let httpFailure: string | null = null;
+        let lastConnectionErr: unknown;
+
+        // A dropped connection is usually a one-off blip (weak wifi, a flaky
+        // hop to Cloudflare) rather than a real failure, so retry silently a
+        // couple of times before bothering the visitor with it. An HTTP error
+        // response is deterministic — Cloudflare actively rejected the file —
+        // so that's reported immediately instead of retried.
+        for (let attempt = 1; attempt <= 3 && !uploaded && !httpFailure; attempt++) {
+          const body = new FormData();
+          body.append("file", picked[i].file);
+          try {
+            const up = await fetch(ticket.uploadURL, { method: "POST", body });
+            if (up.ok) {
+              uploaded = {
+                id: ticket.id,
+                handle: ticket.handle,
+                expiresAt: ticket.expiresAt,
+                caption: picked[i].caption,
+              };
+            } else {
+              const detail = await up.text().catch(() => "");
+              console.error("Upload rejected:", picked[i].file.name, up.status, detail.slice(0, 300));
+              httpFailure = `${picked[i].file.name} (${up.status})`;
+            }
+          } catch (err) {
+            lastConnectionErr = err;
+            console.warn(`Upload attempt ${attempt} threw for`, picked[i].file.name, err);
+            if (attempt < 3) await new Promise((r) => setTimeout(r, 800 * attempt));
           }
-        } catch (err) {
-          // A single file failing must not abandon the others.
-          console.error("Upload threw for", picked[i].file.name, err);
+        }
+
+        if (uploaded) {
+          done.push(uploaded);
+        } else if (httpFailure) {
+          failures.push(httpFailure);
+        } else {
+          console.error("Upload failed after retries for", picked[i].file.name, lastConnectionErr);
           failures.push(`${picked[i].file.name} (connection)`);
         }
         setProgress({ done: i + 1, total: picked.length });
@@ -221,7 +277,12 @@ export default function PhotoForm({ siteKey }: { siteKey?: string }) {
   return (
     <>
       {siteKey && (
-        <Script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer />
+        <Script
+          src="https://challenges.cloudflare.com/turnstile/v0/api.js"
+          async
+          defer
+          onError={() => setTsStatus("error")}
+        />
       )}
 
       <section id="add" className="add-entry">
@@ -302,14 +363,30 @@ export default function PhotoForm({ siteKey }: { siteKey?: string }) {
           </div>
 
           {siteKey && (
-            <div
-              className="cf-turnstile"
-              data-sitekey={siteKey}
-              data-action="turnstile-spin-v2"
-              /* Renew the token automatically when it ages out, so submitting
-                 after a long caption-writing session usually just works. */
-              data-refresh-expired="auto"
-            />
+            <div className="field">
+              <div
+                ref={turnstileBox}
+                className="cf-turnstile"
+                data-sitekey={siteKey}
+                data-action="turnstile-spin-v2"
+                /* Renew the token automatically when it ages out, so submitting
+                   after a long caption-writing session usually just works. */
+                data-refresh-expired="auto"
+              />
+              {tsStatus === "loading" && (
+                <p className="muted-note" role="status">
+                  Loading the verification check&hellip;
+                </p>
+              )}
+              {tsStatus === "error" && (
+                <p className="muted-note" role="status">
+                  This is taking longer than expected. Try reloading the page — if it
+                  still doesn&rsquo;t appear, an ad blocker or privacy extension may be
+                  blocking it, or you can email the photos to contact@joeweisman.org
+                  instead.
+                </p>
+              )}
+            </div>
           )}
 
           {error && (

@@ -25,9 +25,13 @@ export default function SubscribeForm({ siteKey }: { siteKey?: string }) {
 
   if (state.status === "ok") {
     return (
-      <p className="form-ok" role="status">
-        {state.message}
-      </p>
+      <>
+        <hr className="rule" />
+        <h2>You are on the list!</h2>
+        <p className="form-ok" role="status">
+          {state.message}
+        </p>
+      </>
     );
   }
 
