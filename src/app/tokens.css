@@ -371,6 +371,10 @@ body {
 .tag-rejected { color: var(--muted); }
 .stat-attention dd { color: var(--todo); }
 
+.export { display: flex; flex-direction: column; align-items: flex-start;
+           gap: var(--s2); margin: var(--s3) 0 var(--s5); }
+.export .muted-note { max-width: 52ch; }
+
 .entry.is-removed { opacity: .55; }
 .tag {
   margin-left: .6rem; font-family: var(--body); font-size: .8rem; font-weight: 400;

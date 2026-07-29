@@ -7,6 +7,7 @@ import { logout } from "./actions";
 import LoginForm from "./login-form";
 import EntryActions from "./entry-actions";
 import PhotoActions from "./photo-actions";
+import ExportButton from "./export-button";
 
 export const metadata: Metadata = {
   title: "Admin",
@@ -128,6 +129,9 @@ export default async function AdminPage() {
           yet copied to the archive. Run <code>npm run archive</code> to fix.
         </p>
       )}
+
+      <h2>Mailing list</h2>
+      <ExportButton count={counts.contacts} />
 
       <h2>Photographs</h2>
       {photos.length === 0 ? (
