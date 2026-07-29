@@ -37,6 +37,43 @@ export function slugFor(filename: string): string {
 }
 
 /**
+ * Redact anything that looks like an email address.
+ *
+ * One of these files turned out to be a forwarded email Joe had saved, headers
+ * and all, and it published four other people's addresses to the open internet
+ * where scrapers harvest them. That file has been cleaned, but this is the
+ * backstop: these are thirty years of files off a personal machine and nobody
+ * has read all of them closely.
+ *
+ * Runs at build time, so a file added later cannot leak an address by being
+ * dropped into the directory.
+ */
+function redactEmails(text: string): string {
+  return text.replace(/[\w.%+-]+@[\w.-]+\.[a-zA-Z]{2,}/g, "[email address removed]");
+}
+
+/** Strip a leading mail-header block, for files that are saved emails. */
+function stripMailHeaders(text: string): string {
+  const lines = text.split("\n");
+  const header =
+    /^(Delivered-To|Authentication-Results|Received|Return-Path|Message-ID|MIME-Version|Content-Type|X-[\w-]+|Subject|From|To|Cc|Bcc|Sent|Date|Reply-To):/i;
+  if (!header.test(lines[0] ?? "")) return text;
+
+  let i = 0;
+  while (i < lines.length && lines[i].trim()) i++;
+  const subject = lines
+    .slice(0, i)
+    .find((l) => /^subject:/i.test(l))
+    ?.split(":")
+    .slice(1)
+    .join(":")
+    .trim();
+  const body = lines.slice(i);
+  while (body.length && !body[0].trim()) body.shift();
+  return (subject ? [subject, ""] : []).concat(body).join("\n");
+}
+
+/**
  * Remove the indentation every line shares.
  *
  * Most of these are indented six spaces wholesale. Dropping that buys back six
@@ -77,7 +114,9 @@ export function getRecipes(): Recipe[] {
     .filter((f) => !f.startsWith("_") && !f.startsWith(".") && !f.toLowerCase().endsWith(".md"))
     .map((file) => {
       const raw = readFileSync(join(DIR, file), "utf8");
-      const body = dedent(raw.replace(/\r\n?/g, "\n")).replace(/\s+$/, "");
+      const body = redactEmails(
+        dedent(stripMailHeaders(raw.replace(/\r\n?/g, "\n"))),
+      ).replace(/\s+$/, "");
       const year = dates[file] ? Number.parseInt(dates[file].slice(0, 4), 10) : null;
       return {
         slug: slugFor(file),
