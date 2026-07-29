@@ -253,6 +253,8 @@ body {
   white-space: nowrap;
 }
 
+.recipe-year { color: var(--muted); font-variant-numeric: oldstyle-nums; }
+
 .crumb { margin: 0 0 var(--s3); font-size: var(--size-small); }
 
 .recipe-title {

@@ -39,7 +39,10 @@ export default async function RecipePage({ params }: { params: Promise<{ slug: s
       </p>
 
       <h1 className="recipe-title">{recipe.title}</h1>
-      <p className="recipe-file">from: {recipe.file}</p>
+      <p className="recipe-file">
+        from: {recipe.file}
+        {recipe.year && <span className="recipe-year"> &middot; {recipe.year}</span>}
+      </p>
       <hr className="rule" />
 
       {/* Rendered as text by React, never as HTML. pre-wrap keeps his line

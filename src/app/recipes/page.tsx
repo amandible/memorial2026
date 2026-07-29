@@ -27,7 +27,7 @@ export default function RecipesPage() {
           He filed them by inventing his own extensions. <code>.fud</code> for
           food, <code>.dip</code> for dips, and then whatever seemed right at the
           time: <code>.poorboy</code>, <code>.hummus</code>, <code>.frz</code>.
-          The original filename is beside each one.
+          The original filename is beside each one, with the year he wrote it.
         </p>
       </div>
 
@@ -36,7 +36,10 @@ export default function RecipesPage() {
           <li key={r.slug}>
             <Link href={`/recipes/${r.slug}`}>
               <span className="recipe-index-title">{r.title}</span>
-              <span className="recipe-index-file">{r.file}</span>
+              <span className="recipe-index-file">
+                {r.file}
+                {r.year && <span className="recipe-year"> &middot; {r.year}</span>}
+              </span>
             </Link>
           </li>
         ))}

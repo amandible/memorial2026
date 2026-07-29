@@ -25,6 +25,8 @@ export type Recipe = {
   title: string;
   /** The text exactly as he typed it, minus the shared leading indent. */
   body: string;
+  /** Year the file was created, from _dates.json. Null if unknown. */
+  year: number | null;
 };
 
 export function slugFor(filename: string): string {
@@ -60,6 +62,15 @@ export function getRecipes(): Recipe[] {
     string
   >;
 
+  // Creation dates captured from the originals on Joe's machine. They live in a
+  // file because git does not preserve mtimes — on a fresh clone, which is what
+  // Vercel builds from, every file would appear to have been created at deploy
+  // time. They span 1991 to 2015.
+  const dates = JSON.parse(readFileSync(join(DIR, "_dates.json"), "utf8")) as Record<
+    string,
+    string
+  >;
+
   const recipes = readdirSync(DIR)
     // Skip the manifest, dotfiles, and documentation. None of his recipe files
     // are Markdown, so excluding .md is safe and keeps README.md out.
@@ -67,7 +78,14 @@ export function getRecipes(): Recipe[] {
     .map((file) => {
       const raw = readFileSync(join(DIR, file), "utf8");
       const body = dedent(raw.replace(/\r\n?/g, "\n")).replace(/\s+$/, "");
-      return { slug: slugFor(file), file, title: titles[file] ?? file, body };
+      const year = dates[file] ? Number.parseInt(dates[file].slice(0, 4), 10) : null;
+      return {
+        slug: slugFor(file),
+        file,
+        title: titles[file] ?? file,
+        body,
+        year: Number.isFinite(year) ? year : null,
+      };
     })
     .sort((a, b) => a.title.localeCompare(b.title, "en", { sensitivity: "base" }));
 
