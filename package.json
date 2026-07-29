@@ -8,10 +8,12 @@
     "start": "next start",
     "lint": "eslint",
     "migrate": "node scripts/migrate.mjs",
-    "test": "node --experimental-strip-types --test tests/*.test.mts"
+    "test": "node --experimental-strip-types --test tests/*.test.mts",
+    "archive": "node scripts/archive.mjs"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",
+    "aws4fetch": "^1.0.20",
     "marked": "^18.0.7",
     "next": "16.2.12",
     "react": "19.2.4",

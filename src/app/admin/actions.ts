@@ -1,8 +1,11 @@
 "use server";
 
+import { after } from "next/server";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { deleteImage } from "@/lib/cf-images";
+import { archivePhotoQuietly } from "@/lib/archive";
+import { deleteObject } from "@/lib/r2";
 import { checkPassword, grantSession, revokeSession, isAdmin } from "@/lib/admin-auth";
 
 export type LoginState = { error?: string };
@@ -56,6 +59,14 @@ export async function setPhotoStatus(
   `;
   revalidatePath("/admin");
   revalidatePath("/photos");
+
+  // Approving is the point at which the site commits to keeping a photograph, so
+  // that is when it gets copied out of Cloudflare into R2. Runs after the
+  // response so the click isn't waiting on it, and never throws — a failed
+  // backup must not make approving fail. `npm run archive` catches any misses.
+  if (status === "approved") {
+    after(() => archivePhotoQuietly(id));
+  }
 }
 
 /** Delete a rejected photo for good, removing it from Cloudflare Images too. */
@@ -63,12 +74,15 @@ export async function purgePhoto(id: string): Promise<void> {
   if (!(await isAdmin())) throw new Error("Not authorised.");
 
   const [row] = (await db()`
-    select storage_ref from photos where id = ${id}::uuid and status = 'rejected'
-  `) as { storage_ref: string }[];
+    select storage_ref, archive_key from photos where id = ${id}::uuid and status = 'rejected'
+  `) as { storage_ref: string; archive_key: string | null }[];
   // Only rejected photos can be purged, so an approved one can't go by mistake.
   if (!row) throw new Error("Only a rejected photo can be deleted.");
 
   await deleteImage(row.storage_ref);
+  // "Delete for good" has to mean the archive too, or a purge would leave a
+  // copy behind in R2 that nobody knows about.
+  if (row.archive_key) await deleteObject(row.archive_key);
   await db()`delete from photos where id = ${id}::uuid`;
   revalidatePath("/admin");
 }
