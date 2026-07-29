@@ -43,10 +43,23 @@ export async function putObject(
   contentType: string,
 ): Promise<void> {
   if (!r2Configured()) throw new Error("R2 is not configured.");
+
+  // R2 rejects a PUT without Content-Length:
+  //   411 MissingContentLength
+  // An ArrayBuffer handed to fetch can be sent chunked with no length, which is
+  // what happened in the Vercel runtime while working locally, where the
+  // backfill script passes a Node Buffer and gets a length for free.
+  // Normalise to a Uint8Array and state the length explicitly so both paths
+  // behave the same.
+  const bytes = body instanceof Uint8Array ? body : new Uint8Array(body);
+
   const res = await client().fetch(endpoint(key), {
     method: "PUT",
-    body: body as BodyInit,
-    headers: { "content-type": contentType },
+    body: bytes,
+    headers: {
+      "content-type": contentType,
+      "content-length": String(bytes.byteLength),
+    },
   });
   if (!res.ok) {
     throw new Error(`R2 PUT ${key} failed: ${res.status} ${(await res.text()).slice(0, 200)}`);
