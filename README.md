@@ -69,6 +69,8 @@ development machine. Any free port works.
 | `npm run lint` | ESLint |
 | `npm test` | Unit tests — Node's built-in runner, no dependencies |
 | `npm run migrate` | Apply any unapplied `.sql` file in `db/` |
+| `npm run archive` | Copy any approved photo not yet backed up to R2 |
+| `npm run archive -- --pull` | Download the whole archive to `media/archive/` |
 
 The tests cover the parts where a mistake is expensive and silent: that a rejected
 Turnstile token is refused even under the lenient outage policy, that an unset
@@ -113,7 +115,7 @@ content/
   obituary.md · service.md    The written pages
   recipes/                    Joe's original recipe files + _titles.json
 db/                           Numbered .sql migrations, applied by npm run migrate
-scripts/migrate.mjs           The migration runner
+scripts/                      migrate.mjs, archive.mjs
 tests/                        Unit tests (npm test)
 src/app/
   layout.tsx                  Shell, fonts, metadata, Open Graph
@@ -135,6 +137,7 @@ src/lib/
   notify.ts                   Admin emails via Resend
   admin-password.ts           Password + token crypto (no Next imports, so testable)
   admin-auth.ts               Cookie session on top of it
+  r2.ts archive.ts            Photo originals archived to R2 on approval
   ip.ts sections.ts
 public/                       Only what ships: portrait-hero.jpg, og.jpg
 media/                        Working files. GITIGNORED, never deployed.
@@ -170,7 +173,7 @@ Choices worth knowing before you fight them:
 | `contact@` | Cloudflare Email Routing | Live, forwards to the memorial Gmail |
 | Admin notifications | Resend | Live, from `notifications.joeweisman.org` |
 | Uptime alerts | UptimeRobot | Live, free tier. Two monitors — see below |
-| Photo archive | Cloudflare R2 | **Not set up.** Originals live only in Cloudflare Images |
+| Photo archive | Cloudflare R2 | Live, free tier. Bucket `joeweisman-photos`, private |
 
 Running cost is about **$5/month plus the domain**: everything is on a free tier except
 Cloudflare Images.
@@ -360,5 +363,20 @@ Done once. Recorded here so it isn't lost.
 3. **Nobody noticing it's down.** Hence UptimeRobot — an outage nobody sees for three
    weeks is the real failure mode, not an outage.
 
-Monthly, once there's a database: export it, sync the R2 bucket, and keep both copies
-somewhere that isn't one of these vendors. The text needs no backup; it's in git.
+### Backups
+
+The written content needs none — it is in git. The photographs do, because they are
+irreplaceable and exist nowhere else.
+
+An approved photo is copied to R2 automatically. That is still two Cloudflare products in
+one account, so periodically run:
+
+```bash
+npm run archive              # catch anything the automatic copy missed
+npm run archive -- --pull    # download everything to media/archive/
+```
+
+and put the result somewhere that is neither Cloudflare nor this laptop. That third copy
+is the one that survives losing an account.
+
+Worth doing the same for the database occasionally: `pg_dump` from Neon, kept alongside.
