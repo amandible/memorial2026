@@ -323,9 +323,27 @@ There is no broadcast system, on purpose (`PLAN.md` §6). Export the addresses, 
 from `joeweismanmemorial@gmail.com` with everyone in **BCC** — never CC, which would leak
 every mourner's address to every other mourner.
 
-Fine up to about 200 recipients. Past ~300, split it across days or move to Buttondown;
-the CSV makes that migration trivial, which is the main reason the addresses live in our
-own table rather than someone's form widget.
+**Two separate ceilings apply, and the smaller one is not the documented limit.**
+
+*Hard:* a consumer Gmail account allows **500 recipients per day**, rolling 24 hours, with
+BCC counting fully. Past that Gmail refuses to send.
+
+*Soft:* deliverability, which bites well below 500. A single message BCC'd to hundreds is
+a bulk-mail signature, and the memorial Gmail is a new account with no sending history —
+the profile most likely to be filtered. Most recipients will be on Gmail too, which
+filters Gmail-to-Gmail bulk hardest. The failure is not a bounce you would notice; it is
+the message landing in spam folders for people who then never hear about the service.
+
+So: **fine up to roughly 200.** Beyond that, either split across days or switch sender.
+
+**If the list grows, send through Resend instead of Gmail.** It is already configured with
+`notifications.joeweisman.org` verified and SPF/DKIM passing, so deliverability would be
+genuinely good rather than dependent on a new Gmail's reputation. `PLAN.md` §6 chose Gmail
+to avoid owning unsubscribe links and compliance machinery, which is still right for a
+small list and worth revisiting for a large one. Free tier is 100/day and 3,000/month.
+
+Either way the addresses live in our own table rather than a third party's form widget,
+which is what keeps that switch cheap.
 
 When someone asks to be removed, set `removed_at` on their row. Honour it.
 
