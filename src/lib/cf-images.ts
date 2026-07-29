@@ -22,6 +22,24 @@ const API = "https://api.cloudflare.com/client/v4";
 /** Named variant configured in the Cloudflare dashboard. "public" exists by default. */
 const VARIANT = process.env.CF_IMAGES_VARIANT || "public";
 
+/**
+ * Smaller variant for the gallery grid.
+ *
+ * Deliberately falls back to the full-size variant when unset: Cloudflare
+ * returns 404 for a variant that doesn't exist, so defaulting to a name that
+ * might not be configured would break every image in the gallery. Set
+ * CF_IMAGES_THUMB_VARIANT only once the variant exists in the dashboard.
+ *
+ * Named variants do not count against the transformations quota — they are
+ * billed as Images Delivered — so this costs nothing extra.
+ */
+const THUMB_VARIANT = process.env.CF_IMAGES_THUMB_VARIANT || VARIANT;
+
+/** Grid-sized URL. Same as imageUrl() until a thumbnail variant is configured. */
+export function thumbUrl(id: string): string {
+  return imageUrl(id, THUMB_VARIANT);
+}
+
 export function imagesConfigured(): boolean {
   return Boolean(process.env.CF_IMAGES_ACCOUNT_ID && process.env.CF_IMAGES_API_TOKEN);
 }

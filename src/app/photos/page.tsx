@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import PhotoForm from "./form";
 import Gallery from "./gallery";
 import { getApprovedPhotos } from "@/lib/photos";
-import { imageUrl, imagesConfigured } from "@/lib/cf-images";
+import { imageUrl, thumbUrl, imagesConfigured } from "@/lib/cf-images";
 
 export const metadata: Metadata = { title: "Photographs" };
 
@@ -45,7 +45,8 @@ export default async function PhotosPage() {
         <Gallery
           photos={photos.map((p) => ({
             id: p.id,
-            src: imageUrl(p.storage_ref),
+            thumb: thumbUrl(p.storage_ref),
+            full: imageUrl(p.storage_ref),
             caption: p.caption,
             submitter: p.submitter,
           }))}

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { db } from "@/lib/db";
 import { formatDate } from "@/lib/guestbook";
 import { isAdmin } from "@/lib/admin-auth";
-import { imageUrl } from "@/lib/cf-images";
+import { thumbUrl } from "@/lib/cf-images";
 import { logout } from "./actions";
 import LoginForm from "./login-form";
 import EntryActions from "./entry-actions";
@@ -141,7 +141,7 @@ export default async function AdminPage() {
           {photos.map((p) => (
             <figure key={p.id} className={`mod-photo is-${p.status}`}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={imageUrl(p.storage_ref)} alt={p.caption ?? "Submitted photograph"} loading="lazy" />
+              <img src={thumbUrl(p.storage_ref)} alt={p.caption ?? "Submitted photograph"} loading="lazy" />
               <figcaption>
                 <span className={`tag tag-${p.status}`}>{p.status}</span>
                 {p.status === "approved" && !p.archived_at && (

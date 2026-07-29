@@ -4,7 +4,10 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 export type GalleryPhoto = {
   id: string;
-  src: string;
+  /** Grid-sized. Big enough to stay crisp at 2x in a ~380px tile. */
+  thumb: string;
+  /** Full size, only fetched when a photo is actually enlarged. */
+  full: string;
   caption: string | null;
   submitter: string | null;
 };
@@ -74,7 +77,7 @@ export default function Gallery({ photos }: { photos: GalleryPhoto[] }) {
               aria-label={p.caption ? `Enlarge: ${p.caption}` : "Enlarge photograph"}
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={p.src} alt={p.caption ?? "A photograph of Joe Weisman"} loading="lazy" decoding="async" />
+              <img src={p.thumb} alt={p.caption ?? "A photograph of Joe Weisman"} loading="lazy" decoding="async" />
             </button>
             {(p.caption || p.submitter) && (
               <p className="gallery-caption">
@@ -103,7 +106,7 @@ export default function Gallery({ photos }: { photos: GalleryPhoto[] }) {
         {current && (
           <div className="lightbox-inner">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={current.src} alt={current.caption ?? "A photograph of Joe Weisman"} />
+            <img src={current.full} alt={current.caption ?? "A photograph of Joe Weisman"} />
 
             <div className="lightbox-bar">
               <button
