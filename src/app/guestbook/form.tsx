@@ -66,7 +66,14 @@ export default function GuestbookForm({ siteKey }: { siteKey?: string }) {
           </div>
 
           {siteKey && (
-            <div className="cf-turnstile" data-sitekey={siteKey} data-action="turnstile-spin-v2" />
+            <div
+              className="cf-turnstile"
+              data-sitekey={siteKey}
+              data-action="turnstile-spin-v2"
+              /* Writing a tribute easily takes longer than a token's 300-second
+                 life. Let Turnstile renew itself rather than failing on submit. */
+              data-refresh-expired="auto"
+            />
           )}
 
           {state.status === "error" && (

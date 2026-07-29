@@ -18,6 +18,7 @@ export default function PhotoForm({ siteKey }: { siteKey?: string }) {
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(0);
+  const [verifying, setVerifying] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
 
   function onPick(list: FileList | null) {
@@ -50,6 +51,36 @@ export default function PhotoForm({ siteKey }: { siteKey?: string }) {
     }
   }
 
+  function readToken(): string | null {
+    return (
+      (document.querySelector('[name="cf-turnstile-response"]') as HTMLInputElement | null)
+        ?.value || null
+    );
+  }
+
+  /**
+   * Wait for the widget to produce a token.
+   *
+   * Turnstile tokens last 300 seconds, and this form routinely takes longer —
+   * opening a file picker, choosing photos, writing a caption for each. So an
+   * expired token is the normal case, not an exceptional one.
+   *
+   * The first attempt at handling that reset the widget and told the visitor to
+   * press Send again, which did not work: solving a fresh challenge takes a
+   * second or two, so pressing Send immediately found no token, showed the same
+   * message and returned. It looked like a dead button. Waiting here means one
+   * press is enough.
+   */
+  async function waitForToken(ms = 20_000): Promise<string | null> {
+    const deadline = Date.now() + ms;
+    while (Date.now() < deadline) {
+      const t = readToken();
+      if (t) return t;
+      await new Promise((r) => setTimeout(r, 250));
+    }
+    return null;
+  }
+
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
@@ -67,18 +98,22 @@ export default function PhotoForm({ siteKey }: { siteKey?: string }) {
     let stage: "verify" | "tickets" | "upload" | "record" = "verify";
 
     try {
-      const token =
-        (document.querySelector('[name="cf-turnstile-response"]') as HTMLInputElement | null)
-          ?.value || null;
+      let token = readToken();
 
-      // Turnstile tokens last 300 seconds. This form asks people to open a file
-      // picker, choose photos and write a caption for each, which routinely takes
-      // longer than that — so an empty or spent token here is expected, not
-      // exceptional. Refresh it and let them try again rather than failing oddly.
+      // Expired while they were choosing photos — refresh and wait for the new
+      // one rather than bouncing them back to the button.
       if (!token) {
+        setVerifying(true);
         resetTurnstile();
+        token = await waitForToken();
+        setVerifying(false);
+      }
+
+      if (!token) {
+        // Managed mode escalated to a checkbox, or the widget is wedged. Say
+        // what to actually do — the files and captions are still here.
         setError(
-          "The verification below expired while you were choosing photos. It has been refreshed — please press Send again.",
+          "Please complete the verification below, then press Send again. Your photos and captions are still here.",
         );
         return;
       }
@@ -162,6 +197,7 @@ export default function PhotoForm({ siteKey }: { siteKey?: string }) {
       resetTurnstile();
     } finally {
       setBusy(false);
+      setVerifying(false);
       setProgress(null);
     }
   }
@@ -266,7 +302,14 @@ export default function PhotoForm({ siteKey }: { siteKey?: string }) {
           </div>
 
           {siteKey && (
-            <div className="cf-turnstile" data-sitekey={siteKey} data-action="turnstile-spin-v2" />
+            <div
+              className="cf-turnstile"
+              data-sitekey={siteKey}
+              data-action="turnstile-spin-v2"
+              /* Renew the token automatically when it ages out, so submitting
+                 after a long caption-writing session usually just works. */
+              data-refresh-expired="auto"
+            />
           )}
 
           {error && (
@@ -275,14 +318,26 @@ export default function PhotoForm({ siteKey }: { siteKey?: string }) {
             </p>
           )}
 
-          {progress && (
+          {verifying && (
+            <p className="muted-note" role="status">
+              Refreshing the verification&hellip; this takes a moment.
+            </p>
+          )}
+
+          {progress && !verifying && (
             <p className="muted-note" role="status">
               Sending {progress.done} of {progress.total}…
             </p>
           )}
 
           <button type="submit" disabled={busy || picked.length === 0}>
-            {busy ? "Sending…" : picked.length > 1 ? `Send ${picked.length} photographs` : "Send photograph"}
+            {verifying
+              ? "Verifying…"
+              : busy
+                ? "Sending…"
+                : picked.length > 1
+                  ? `Send ${picked.length} photographs`
+                  : "Send photograph"}
           </button>
         </form>
       </section>

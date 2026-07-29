@@ -80,6 +80,7 @@ export default function SubscribeForm({ siteKey }: { siteKey?: string }) {
             className="cf-turnstile"
             data-sitekey={siteKey}
             data-action="turnstile-spin-v2"
+            data-refresh-expired="auto"
           />
         )}
 
