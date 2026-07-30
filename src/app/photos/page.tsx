@@ -31,7 +31,8 @@ export default async function PhotosPage() {
         </Link>
 
         <p className="muted-note">
-          If some of the pictures are not loading, please hit your browser reload button.
+          Note: If some of the pictures are not loading, please hit your browser
+          reload button.
         </p>
       </div>
 
