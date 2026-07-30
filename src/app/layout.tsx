@@ -55,7 +55,12 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" className={`${bodySerif.variable} ${displaySerif.variable} ${mono.variable}`}>
-      <body>
+      {/* Browser extensions stamp attributes on <body> before React hydrates —
+          Web of Trust adds wotdisconnected, others add their own — and React
+          reports each as a hydration mismatch. This suppresses that comparison
+          for <body>'s own attributes only; mismatches in the actual page
+          content are still reported, which is what we want to hear about. */}
+      <body suppressHydrationWarning>
         <a href="#main" className="skip">Skip to content</a>
         <Nav />
         {children}
