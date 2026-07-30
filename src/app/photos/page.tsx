@@ -25,15 +25,15 @@ export default async function PhotosPage() {
       <h1 className="page-title">Photographs</h1>
       <hr className="rule" />
 
-      <p className="jump-note">
+      <div className="toolbar-row">
         <Link href="/photos/add" className="btn-primary">
           Add More Photographs
         </Link>
-      </p>
 
-      <p className="muted-note">
-        If some of the pictures are not loading, please hit your browser reload button.
-      </p>
+        <p className="muted-note">
+          If some of the pictures are not loading, please hit your browser reload button.
+        </p>
+      </div>
 
       {failed ? (
         <p className="form-error">

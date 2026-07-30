@@ -10,19 +10,19 @@ export default function SubscribePage() {
       <hr className="rule" />
       <div className="prose">
         <p>
-          Leave your address and we&rsquo;ll write when the service details are
-          confirmed, and when the photographs and guestbook open.
+          Leave your address and we will write when the service details are
+          confirmed.
         </p>
         <p>
-          It will be occasional &mdash; a handful of messages, not a mailing list
-          you need to escape from. Reply to any of them to be taken off.
+          Rest assured, you are signing up for only a handful of messages. You
+          can reply to any of them to ask to be taken off the list.
         </p>
       </div>
 
       <SubscribeForm siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY} />
 
       <p className="contact-note">
-        Would rather just write to someone?{" "}
+        Would you rather just write to someone?{" "}
         <a href="mailto:contact@joeweisman.org">contact@joeweisman.org</a>.
       </p>
     </main>

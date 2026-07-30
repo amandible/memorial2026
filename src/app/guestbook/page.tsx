@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import GuestbookForm from "./form";
 import { getPublishedEntries, formatDate, PAGE_SIZE } from "@/lib/guestbook";
 
 export const metadata: Metadata = { title: "Guestbook" };
@@ -24,8 +23,8 @@ export default async function GuestbookPage({
   try {
     ({ entries, hasOlder } = await getPublishedEntries(page));
   } catch (e) {
-    // The database being down must not take the page down with it. The form
-    // still renders below, so someone can still write.
+    // A database problem shouldn't take the page down — visitors can still
+    // navigate to /guestbook/add to write a message.
     console.error("Failed to load guestbook entries:", e);
     failed = true;
   }
@@ -37,7 +36,9 @@ export default async function GuestbookPage({
 
       {page === 0 && (
         <p className="jump-note">
-          <a href="#add">Leave a message</a>
+          <Link href="/guestbook/add" className="btn-primary">
+            Leave a message
+          </Link>
         </p>
       )}
 
@@ -58,7 +59,7 @@ export default async function GuestbookPage({
             <article key={entry.id} className="entry">
               <header className="entry-head">
                 {/* Rendered as text by React, never as HTML. */}
-                <span className="entry-name">{entry.name}</span>
+                <span className="entry-name">From {entry.name}</span>
                 <time className="entry-date" dateTime={entry.created_at.toISOString()}>
                   {formatDate(entry.created_at)}
                 </time>
@@ -89,8 +90,6 @@ export default async function GuestbookPage({
           Showing messages {page * PAGE_SIZE + 1}&ndash;{page * PAGE_SIZE + entries.length}.
         </p>
       )}
-
-      <GuestbookForm siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY} />
     </main>
   );
 }

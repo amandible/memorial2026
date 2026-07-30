@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import Script from "next/script";
 import { useActionState, useEffect } from "react";
 import { signGuestbook, type GuestbookState } from "./actions";
@@ -25,6 +26,9 @@ export default function GuestbookForm({ siteKey }: { siteKey?: string }) {
         <p className="muted-note">
           Your message is on the page now. Reload to see it among the others.
         </p>
+        <Link href="/guestbook" className="btn-quiet">
+          View the guestbook
+        </Link>
       </div>
     );
   }
@@ -38,8 +42,8 @@ export default function GuestbookForm({ siteKey }: { siteKey?: string }) {
       <section id="add" className="add-entry">
         <h2>Leave a message</h2>
         <p className="muted-note">
-          It appears on this page straight away, for his family and everyone else
-          who knew him to read.
+          Once you submit, your message will appear on this page straight away,
+          for his family and everyone else who knew him to read.
         </p>
 
         <form action={formAction} className="form">

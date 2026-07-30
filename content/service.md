@@ -20,7 +20,7 @@ so nobody has to work it out alone.
 
 ## Photographs
 
-If you have photographs of Joe, [you can send them here](/photos). Anything at all
+If you have photographs of Joe, [you can send them here](/photos/add). Anything at all
 — the boat, the commune, a sauna he built, a kitchen he improved, a project he
 talked you into. Pictures sent in before the 19th can be part of the day itself.
 
