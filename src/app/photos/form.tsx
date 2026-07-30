@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import Script from "next/script";
 import { useEffect, useRef, useState } from "react";
 import { requestUploads, recordPhotos, type Submission } from "./actions";
@@ -269,7 +270,10 @@ export default function PhotoForm({ siteKey }: { siteKey?: string }) {
         </p>
         <button type="button" className="btn-quiet" onClick={() => setSaved(0)}>
           Send more
-        </button>
+        </button>{" "}
+        <Link href="/photos" className="btn-quiet">
+          View the gallery
+        </Link>
       </div>
     );
   }
@@ -380,8 +384,9 @@ export default function PhotoForm({ siteKey }: { siteKey?: string }) {
               )}
               {tsStatus === "error" && (
                 <p className="muted-note" role="status">
-                  This is taking longer than expected. Try reloading the page — if it
-                  still doesn&rsquo;t appear, an ad blocker or privacy extension may be
+                  Authenticating the form is taking longer than expected. Try
+                  reloading the page — if the verification check still
+                  doesn&rsquo;t appear, an ad blocker or privacy extension may be
                   blocking it, or you can email the photos to contact@joeweisman.org
                   instead.
                 </p>

@@ -329,14 +329,30 @@ body {
 .stats dd { margin: 0; font-family: var(--display); font-size: 1.9rem; font-variant-numeric: tabular-nums; }
 
 .btn-quiet {
+  display: inline-block;
   font-family: var(--body); font-size: var(--size-small);
   color: var(--link); background: none; border: 1px solid var(--rule);
   border-radius: 2px; padding: .4rem .8rem; cursor: pointer; min-height: 36px;
+  text-decoration: none;
 }
 .btn-quiet:hover { border-color: currentColor; }
 .btn-quiet[disabled] { opacity: .5; cursor: default; }
 .btn-danger { color: #A33A2A; }
 @media (prefers-color-scheme: dark) { .btn-danger { color: #E39385; } }
+
+.btn-primary {
+  display: inline-block;
+  font-family: var(--display);
+  font-size: 1.1rem;
+  color: var(--bg);
+  background: var(--text);
+  border: 1px solid var(--text);
+  border-radius: 2px;
+  padding: .7rem 1.6rem;
+  text-decoration: none;
+  min-height: 44px;
+}
+.btn-primary:hover { background: var(--bg); color: var(--text); }
 
 /* Photo submission form */
 .picked { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--s3); }
