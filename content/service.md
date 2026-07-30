@@ -28,7 +28,7 @@ Photos straight off a phone are fine, and you can add a note to each one saying
 who is in it or where it was. You are very welcome to bring prints with you as
 well.
 
-## In the meantime
+## Collecting Memories
 
 The [guestbook](/guestbook) is open. If you knew Joe and want to write something
-now, his family would be glad to read it.
+now, his friends and family would be glad to read it.
