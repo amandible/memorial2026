@@ -77,6 +77,18 @@ export async function setPhotoStatus(
   revalidatePath("/photos");
 }
 
+const MAX_CAPTION = 500;
+
+/** Edit a photo's caption. */
+export async function setPhotoCaption(id: string, caption: string): Promise<void> {
+  if (!(await isAdmin())) throw new Error("Not authorised.");
+
+  const trimmed = caption.trim().slice(0, MAX_CAPTION);
+  await db()`update photos set caption = ${trimmed || null} where id = ${id}::uuid`;
+  revalidatePath("/admin");
+  revalidatePath("/photos");
+}
+
 /** Delete a rejected photo for good, removing it from Cloudflare Images too. */
 export async function purgePhoto(id: string): Promise<void> {
   if (!(await isAdmin())) throw new Error("Not authorised.");

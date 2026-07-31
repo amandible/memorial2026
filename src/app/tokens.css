@@ -388,6 +388,18 @@ body {
 .mod-photo img { width: 100%; height: auto; display: block; background: var(--bg-sunk); }
 .mod-photo figcaption { display: flex; flex-direction: column; gap: .3rem; margin-top: .6rem; font-size: var(--size-small); }
 .mod-caption { overflow-wrap: anywhere; }
+.mod-caption-row { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
+.mod-caption-empty { color: var(--muted); font-style: italic; }
+.mod-caption-input {
+  flex: 1 1 10rem;
+  font-family: var(--body);
+  font-size: var(--size-small);
+  color: var(--text);
+  background: var(--bg-sunk);
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+  padding: .3rem .5rem;
+}
 .mod-meta { color: var(--muted); font-size: .85rem; overflow-wrap: anywhere; }
 .mod-photo.is-rejected { opacity: .5; }
 .photo-actions { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .6rem; }

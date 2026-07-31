@@ -7,6 +7,7 @@ import { logout } from "./actions";
 import LoginForm from "./login-form";
 import EntryActions from "./entry-actions";
 import PhotoActions from "./photo-actions";
+import CaptionEditor from "./caption-editor";
 import ExportButton from "./export-button";
 
 export const metadata: Metadata = {
@@ -147,7 +148,7 @@ export default async function AdminPage() {
                 {p.status === "approved" && !p.archived_at && (
                   <span className="tag tag-pending">not backed up</span>
                 )}
-                {p.caption && <span className="mod-caption">{p.caption}</span>}
+                <CaptionEditor id={p.id} caption={p.caption} />
                 <span className="mod-meta">
                   {p.submitter ?? "anonymous"}
                   {p.email && <> &middot; {p.email}</>}
