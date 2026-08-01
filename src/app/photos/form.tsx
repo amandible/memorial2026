@@ -40,7 +40,13 @@ export default function PhotoForm({ siteKey }: { siteKey?: string }) {
       }
       // Keep polling even past the timeout: a slow connection that eventually
       // comes through should clear the message, not get stuck showing it.
-      setTsStatus(Date.now() - start > 8_000 ? "error" : "loading");
+      //
+      // 20s rather than 8s. At 8s a merely slow load — a cold Cloudflare edge,
+      // a phone on bad signal — showed the "an ad blocker may be blocking it"
+      // warning and then quietly recovered, which is alarming and wrong. The
+      // message accuses the visitor's browser of something, so it should only
+      // appear when that is actually likely.
+      setTsStatus(Date.now() - start > 20_000 ? "error" : "loading");
       setTimeout(tick, 300);
     }
     tick();
@@ -129,28 +135,27 @@ export default function PhotoForm({ siteKey }: { siteKey?: string }) {
       let token = readToken();
 
       if (!token) {
-        // The passive poll (see tsStatus above) already knows the widget never
-        // rendered — no point waiting 20 seconds to discover that again.
-        if (tsStatus === "error") {
-          setError(
-            "We couldn't load the security check — this usually means an ad blocker or privacy extension is active. Try turning it off for this site and reloading, or email the photos to contact@joeweisman.org instead. Your photos and captions are still here.",
-          );
-          return;
-        }
-
-        // Expired while they were choosing photos — refresh and wait for the
-        // new one rather than bouncing them back to the button.
+        // Always wait, whatever the passive poll thinks. An earlier version
+        // bailed immediately when tsStatus was "error" — but that status only
+        // means "hasn't appeared yet", not "never will", and a slow widget that
+        // was about to work got a hard "an ad blocker is active" instead. Never
+        // refuse to try because of a guess about why something is slow.
+        //
+        // Waiting less when it already looks stuck, so a genuinely blocked
+        // widget doesn't hold someone for the full twenty seconds.
         setVerifying(true);
         resetTurnstile();
-        token = await waitForToken();
+        token = await waitForToken(tsStatus === "error" ? 8_000 : 20_000);
         setVerifying(false);
       }
 
       if (!token) {
-        // Managed mode escalated to a checkbox, or the widget is wedged. Say
-        // what to actually do — the files and captions are still here.
+        // Only now is it fair to blame the browser — we waited and nothing came.
+        // tsStatus picks the wording, it no longer decides whether to try.
         setError(
-          "Please complete the verification below, then press Send again. Your photos and captions are still here.",
+          tsStatus === "error"
+            ? "We couldn't load the security check — this usually means an ad blocker or privacy extension is active. Try turning it off for this site and reloading, or email the photos to contact@joeweisman.org instead. Your photos and captions are still here."
+            : "Please complete the verification below, then press Send again. Your photos and captions are still here.",
         );
         return;
       }
