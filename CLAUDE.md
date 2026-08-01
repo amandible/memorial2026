@@ -96,6 +96,19 @@ unreachable is a per-form judgment call. Guestbook denies on outage (entries
 publish immediately to a public page); forms writing only to private data may
 allow. Match this pattern for any new form rather than hardcoding one behavior.
 
+**On the client, never probe Turnstile's DOM — check for `window.turnstile`.**
+The widget renders into a *shadow root*, so `querySelector("iframe")` on its
+container finds nothing no matter how well it is working. A poll written that way
+tells every visitor the form is broken while the widget above it reads "Success!"
+— which is exactly what happened, and it looks like an intermittent bug because
+the message only appears once the timeout elapses. The only thing that status text
+is really about is whether an extension blocked `challenges.cloudflare.com`, and
+the missing global is precisely what that looks like. Related: the submit path in
+`src/app/photos/form.tsx` always calls `waitForToken()` and never refuses to try
+based on that status — the status picks the wording, it does not gate submission.
+A token expires after 300s and this form takes longer than that to fill in, so
+"looks unready" and "will fail" are different claims.
+
 **`/api/health`** is the UptimeRobot target — it returns 503 only for a real
 visitor-facing outage (DB unreachable, or `TURNSTILE_SECRET` missing in prod).
 Optional services being merely unconfigured report as `degraded` in the body
