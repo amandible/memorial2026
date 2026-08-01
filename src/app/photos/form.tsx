@@ -34,19 +34,32 @@ export default function PhotoForm({ siteKey }: { siteKey?: string }) {
 
     function tick() {
       if (cancelled) return;
-      if (turnstileBox.current?.querySelector("iframe")) {
-        setTsStatus("ready");
-        return; // rendered — nothing left to watch for
-      }
-      // Keep polling even past the timeout: a slow connection that eventually
-      // comes through should clear the message, not get stuck showing it.
+
+      // Detect the *script*, not the widget. Looking for an iframe inside the
+      // container was wrong twice over: Turnstile renders into a shadow root,
+      // so querySelector never finds one, and a visibly working widget showing
+      // "Success!" still reported "taking longer than expected".
       //
-      // 20s rather than 8s. At 8s a merely slow load — a cold Cloudflare edge,
-      // a phone on bad signal — showed the "an ad blocker may be blocking it"
-      // warning and then quietly recovered, which is alarming and wrong. The
-      // message accuses the visitor's browser of something, so it should only
-      // appear when that is actually likely.
-      setTsStatus(Date.now() - start > 20_000 ? "error" : "loading");
+      // The only thing this warning is really about is whether an extension
+      // blocked challenges.cloudflare.com, and that is exactly what the absence
+      // of window.turnstile means. If the script is there, the check works —
+      // whether the widget has finished is not our business.
+      const scriptLoaded =
+        typeof (window as { turnstile?: unknown }).turnstile !== "undefined";
+      const solved = Boolean(readToken());
+      const hasWidget = Boolean(turnstileBox.current?.firstElementChild);
+
+      const next: typeof tsStatus =
+        scriptLoaded || solved || hasWidget
+          ? "ready"
+          : Date.now() - start > 20_000
+            ? "error"
+            : "loading";
+
+      // Only set state when it actually changes; this ticks every 300ms and
+      // would otherwise re-render the whole form ~65 times while loading.
+      setTsStatus((prev) => (prev === next ? prev : next));
+      if (next === "ready") return;
       setTimeout(tick, 300);
     }
     tick();
