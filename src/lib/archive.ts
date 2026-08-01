@@ -1,5 +1,6 @@
 import { db } from "./db.ts";
 import { putObject, objectExists, r2Configured } from "./r2.ts";
+import { readExifDate } from "./exif.ts";
 
 /**
  * Copy an approved photograph's original into R2.
@@ -61,13 +62,37 @@ export async function archivePhoto(rowId: string): Promise<ArchiveResult> {
   if (!r2Configured()) return { status: "skipped", reason: "R2 not configured" };
 
   const [row] = (await db()`
-    select id, storage_ref, archived_at from photos where id = ${rowId}::uuid
-  `) as { id: string; storage_ref: string; archived_at: Date | null }[];
+    select id, storage_ref, archived_at, taken_year, taken_source
+    from photos where id = ${rowId}::uuid
+  `) as {
+    id: string; storage_ref: string; archived_at: Date | null;
+    taken_year: number | null; taken_source: string | null;
+  }[];
 
   if (!row) return { status: "skipped", reason: "no such photo" };
   if (row.archived_at) return { status: "skipped", reason: "already archived" };
 
   const { body, type } = await fetchOriginal(row.storage_ref);
+
+  // The original is in hand for the archive, so read its capture date in the
+  // same pass. Only fills a gap: a year the sender typed is never overwritten,
+  // because they know things the file does not.
+  try {
+    const exif = await readExifDate(body);
+    if (exif.takenAt || exif.year) {
+      const fill = !row.taken_year;
+      await db()`
+        update photos set
+          exif_taken_at = ${exif.takenAt},
+          taken_year    = ${fill ? exif.year : row.taken_year},
+          taken_source  = ${fill && exif.year ? "exif" : row.taken_source}
+        where id = ${row.id}::uuid
+      `;
+    }
+  } catch (e) {
+    // Never let metadata reading break the archive it is riding along with.
+    console.warn(`Could not read EXIF for ${row.storage_ref}:`, e);
+  }
   const key = archiveKeyFor(row.storage_ref, type);
 
   // Belt and braces: if the object is already there from an interrupted run,

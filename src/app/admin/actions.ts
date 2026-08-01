@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { deleteImage } from "@/lib/cf-images";
 import { archivePhotoQuietly } from "@/lib/archive";
 import { deleteObject } from "@/lib/r2";
+import { parseYear } from "@/lib/exif";
 import { checkPassword, grantSession, revokeSession, isAdmin } from "@/lib/admin-auth";
 
 export type LoginState = { error?: string };
@@ -90,6 +91,29 @@ export async function setPhotoCaption(id: string, caption: string): Promise<void
 }
 
 /** Delete a rejected photo for good, removing it from Cloudflare Images too. */
+/**
+ * Set or clear the year a photograph was taken.
+ *
+ * Marked 'admin' so the source is visible: a hand-set year is the only one that
+ * can be trusted over both the sender's guess and the file's metadata. Clearing
+ * it hides the year rather than falling back to EXIF, because the reason to
+ * clear is usually that EXIF was wrong.
+ */
+export async function setPhotoYear(id: string, year: string): Promise<void> {
+  if (!(await isAdmin())) throw new Error("Not authorised.");
+
+  const parsed = year.trim() === "" ? null : parseYear(year);
+  if (year.trim() !== "" && parsed === null) {
+    throw new Error("That isn't a plausible year.");
+  }
+  await db()`
+    update photos set taken_year = ${parsed}, taken_source = ${parsed ? "admin" : null}
+    where id = ${id}::uuid
+  `;
+  revalidatePath("/admin");
+  revalidatePath("/photos");
+}
+
 export async function purgePhoto(id: string): Promise<void> {
   if (!(await isAdmin())) throw new Error("Not authorised.");
 

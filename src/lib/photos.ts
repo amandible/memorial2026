@@ -6,6 +6,7 @@ export type Photo = {
   caption: string | null;
   submitter: string | null;
   created_at: Date;
+  taken_year: number | null;
 };
 
 export type PendingPhoto = Photo & { email: string | null; status: string };
@@ -13,15 +14,22 @@ export type PendingPhoto = Photo & { email: string | null; status: string };
 /**
  * Approved photos, in gallery order.
  *
- * Curated ones carry a sort_order and lead; submissions follow by date.
+ * Curated ones carry a sort_order and lead; submissions follow, newest first.
+ * Oldest-first buried every new arrival at the bottom of the page, where the
+ * person who had just sent it would never see it — the opposite of what you
+ * want while photographs are still coming in before the service.
+ *
+ * Chronological by taken_year is the better arrangement once enough of those
+ * are confirmed; see PLAN.md.
+ *
  * Selects only what the public page renders — never email.
  */
 export async function getApprovedPhotos(): Promise<Photo[]> {
   return (await db()`
-    select id, storage_ref, caption, submitter, created_at
+    select id, storage_ref, caption, submitter, created_at, taken_year
     from photos
     where status = 'approved'
-    order by sort_order nulls last, created_at
+    order by sort_order nulls last, created_at desc
   `) as Photo[];
 }
 

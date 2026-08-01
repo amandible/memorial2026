@@ -413,6 +413,20 @@ body {
            gap: var(--s2); margin: var(--s3) 0 var(--s5); }
 .export .muted-note { max-width: 52ch; }
 
+/* Year, shown beside a caption. Muted and oldstyle, like the recipe years —
+   provenance, not a headline. */
+.photo-year { color: var(--muted); font-variant-numeric: oldstyle-nums; }
+
+.year-input {
+  font-family: var(--body); font-size: var(--size-body);
+  width: 6.5rem; color: var(--text); background: var(--bg-sunk);
+  border: 1px solid var(--rule); border-radius: 2px; padding: .5rem .6rem;
+  font-variant-numeric: oldstyle-nums;
+}
+.mod-year-row { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem; margin-top: .3rem; }
+.mod-year { font-variant-numeric: oldstyle-nums; }
+.mod-year-source { color: var(--muted); font-size: .8rem; }
+
 .entry.is-removed { opacity: .55; }
 .tag {
   margin-left: .6rem; font-family: var(--body); font-size: .8rem; font-weight: 400;

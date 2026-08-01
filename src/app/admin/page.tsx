@@ -8,6 +8,7 @@ import LoginForm from "./login-form";
 import EntryActions from "./entry-actions";
 import PhotoActions from "./photo-actions";
 import CaptionEditor from "./caption-editor";
+import YearEditor from "./year-editor";
 import ExportButton from "./export-button";
 
 export const metadata: Metadata = {
@@ -65,7 +66,8 @@ export default async function AdminPage() {
 
   // Pending first and oldest first, so nothing waits unnoticed.
   const photos = (await db()`
-    select id, storage_ref, caption, submitter, email, status, created_at, archived_at
+    select id, storage_ref, caption, submitter, email, status, created_at, archived_at,
+           taken_year, taken_source, exif_taken_at
     from photos
     order by (status = 'pending') desc, created_at
     limit 200
@@ -78,6 +80,9 @@ export default async function AdminPage() {
     status: "pending" | "approved" | "rejected";
     created_at: Date;
     archived_at: Date | null;
+    taken_year: number | null;
+    taken_source: string | null;
+    exif_taken_at: Date | null;
   }[];
 
   return (
@@ -149,6 +154,12 @@ export default async function AdminPage() {
                   <span className="tag tag-pending">not backed up</span>
                 )}
                 <CaptionEditor id={p.id} caption={p.caption} />
+                <YearEditor
+                  id={p.id}
+                  year={p.taken_year}
+                  source={p.taken_source}
+                  exifTakenAt={p.exif_taken_at}
+                />
                 <span className="mod-meta">
                   {p.submitter ?? "anonymous"}
                   {p.email && <> &middot; {p.email}</>}

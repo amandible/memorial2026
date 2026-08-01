@@ -60,6 +60,7 @@ export default async function PhotosPage() {
             full: imageUrl(p.storage_ref),
             caption: p.caption,
             submitter: p.submitter,
+            year: p.taken_year,
           }))}
         />
       )}

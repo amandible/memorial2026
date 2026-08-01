@@ -7,6 +7,7 @@ import { notifyPhotoSubmission } from "@/lib/notify";
 import { db } from "@/lib/db";
 import { hashIp } from "@/lib/ip";
 import { verifyTurnstile } from "@/lib/turnstile";
+import { parseYear } from "@/lib/exif";
 import {
   createDirectUpload,
   imagesConfigured,
@@ -83,6 +84,8 @@ export type Submission = {
   handle: string;
   expiresAt: number;
   caption: string;
+  /** Year the photo was taken, if the sender knew it. Beats EXIF. */
+  year?: string;
 };
 
 /**
@@ -117,11 +120,14 @@ export async function recordPhotos(
       continue;
     }
     try {
+      const year = parseYear(s.year);
       await db()`
-        insert into photos (submitter, email, caption, storage_ref, status, ip_hash)
+        insert into photos (submitter, email, caption, storage_ref, status, ip_hash,
+                            taken_year, taken_source)
         values (${name || null}, ${mail || null},
                 ${s.caption.trim().slice(0, MAX_CAPTION) || null},
-                ${s.id}, 'pending', ${ipHash})
+                ${s.id}, 'pending', ${ipHash},
+                ${year}, ${year ? "submitter" : null})
       `;
       saved++;
     } catch (e) {

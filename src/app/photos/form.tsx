@@ -5,7 +5,7 @@ import Script from "next/script";
 import { useEffect, useRef, useState } from "react";
 import { requestUploads, recordPhotos, type Submission } from "./actions";
 
-type Picked = { file: File; caption: string; key: string };
+type Picked = { file: File; caption: string; year: string; key: string };
 
 const MAX_FILES = 12;
 const MAX_BYTES = 25 * 1024 * 1024;
@@ -58,7 +58,7 @@ export default function PhotoForm({ siteKey }: { siteKey?: string }) {
       setError(`"${tooBig.name}" is larger than 25 MB. Please send that one to contact@joeweisman.org instead.`);
       return;
     }
-    const next = [...picked, ...files.map((f) => ({ file: f, caption: "", key: `${f.name}-${f.size}-${f.lastModified}` }))];
+    const next = [...picked, ...files.map((f) => ({ file: f, caption: "", year: "", key: `${f.name}-${f.size}-${f.lastModified}` }))];
     const unique = next.filter((p, i) => next.findIndex((x) => x.key === p.key) === i);
     if (unique.length > MAX_FILES) {
       setError(`Please send up to ${MAX_FILES} photos at a time. You can come back and add more.`);
@@ -191,6 +191,7 @@ export default function PhotoForm({ siteKey }: { siteKey?: string }) {
                 handle: ticket.handle,
                 expiresAt: ticket.expiresAt,
                 caption: picked[i].caption,
+                year: picked[i].year,
               };
             } else {
               const detail = await up.text().catch(() => "");
@@ -343,6 +344,28 @@ export default function PhotoForm({ siteKey }: { siteKey?: string }) {
                     value={p.caption}
                     onChange={(e) =>
                       setPicked(picked.map((x) => (x.key === p.key ? { ...x, caption: e.target.value } : x)))
+                    }
+                  />
+                  <label htmlFor={`yr-${i}`} className="picked-caption-label">
+                    Year taken <span className="optional">(optional)</span>
+                  </label>
+                  <input
+                    id={`yr-${i}`}
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={4}
+                    className="year-input"
+                    disabled={busy}
+                    placeholder="e.g. 1978"
+                    value={p.year}
+                    onChange={(e) =>
+                      setPicked(
+                        picked.map((x) =>
+                          x.key === p.key
+                            ? { ...x, year: e.target.value.replace(/[^0-9]/g, "").slice(0, 4) }
+                            : x,
+                        ),
+                      )
                     }
                   />
                 </li>

@@ -109,6 +109,13 @@ at build time, a year-three failure mode `PLAN.md` §11 explains).
 
 ## Git commits
 
+- **Before editing anything, confirm you are level with `origin/main`.** More than
+  one person works on this repo. Run `git fetch && git status` and read the
+  "behind by N commits" line — `git fetch` alone updates the remote-tracking ref
+  and leaves your working copy where it was, so it is possible to `--all` your way
+  to a correct answer about the remote while patching stale files. That happened:
+  six of Luke's commits landed between a pull and the next fetch, and edits were
+  written against his older versions of files he had since rewritten.
 - **Do not include Claude attribution in commit messages.** No `Co-Authored-By`,
   no "Generated with" footer.
 - **Never `git add -A` or `git add .`** — stage explicit paths, or `git add -u`.
