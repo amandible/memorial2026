@@ -11,6 +11,14 @@ Claude Code (an AI coding assistant). We did not hire anyone or already know how
 
 We designed this to be something not too expensive. Running the site should cost about $5 a month to run, plus a domain name (usually $10–20 a year). We built it to still be standing in ten years with nobody tending it.
 
+Finally, if you are using this to make a site for a loved one, then we imagine you are going through a hard time right now. We have found that making a site to celebrate our father, and all that he inspired us to do (including making this site) was immensly comforting. We hope your process of celebrating your loved one by making something to show who they were is similarly satisfying.
+
+Sincerely,
+
+Jazz and Luke
+
+
+
 ## What you'll need
 
 A free [GitHub](https://github.com) account, and [Claude Code](https://claude.com/claude-code) installed on your computer. Both take a few minutes to set up if you've never used them before.
