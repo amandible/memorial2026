@@ -1,61 +1,66 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import Gallery from "./gallery";
+import Gallery from "../photos/gallery";
 import { getApprovedPhotos } from "@/lib/photos";
 import { ARTIFACTS_LABEL } from "@/lib/sections";
 import { imageUrl, thumbUrl, imagesConfigured } from "@/lib/cf-images";
 
-export const metadata: Metadata = { title: "Photographs" };
+export const metadata: Metadata = { title: ARTIFACTS_LABEL };
 
 // Reads the database per request so a newly approved photo appears immediately.
 export const dynamic = "force-dynamic";
 
-export default async function PhotosPage() {
+export default async function ArtifactsPage() {
   let photos: Awaited<ReturnType<typeof getApprovedPhotos>> = [];
   let failed = false;
   try {
-    photos = await getApprovedPhotos("photo");
+    photos = await getApprovedPhotos("artifact");
   } catch (e) {
     // A database problem shouldn't take the page down — the gallery below still tries.
-    console.error("Failed to load photos:", e);
+    console.error("Failed to load artifacts:", e);
     failed = true;
   }
 
   return (
     <main className="page page-photos" id="main">
-      <h1 className="page-title">Photographs</h1>
+      <h1 className="page-title">{ARTIFACTS_LABEL}</h1>
       <hr className="rule" />
 
+      <p className="prose">
+        Things Joe made, marked, or kept. He built a sauna wherever he lived, and
+        left behind fish ponds, shelving units, improved kitchens, and a
+        harpsichord bearing the motto <em>work for beauty as for bread</em>. He
+        annotated his recipes, sharpened other people&rsquo;s knives, folded
+        origami dollar bills, and wrote in a block-print hand that was
+        unmistakably his.
+      </p>
+
       <div className="toolbar-row">
-        <Link href="/photos/add" className="btn-primary">
-          Add More Photographs
+        <Link href="/photos/add?kind=artifact" className="btn-primary">
+          Send Something of His
         </Link>
 
         <p className="muted-note">
-          Note: If some of the pictures are not loading, please hit your browser
-          reload button.
+          Not only photographs &mdash; recordings, scans, letters, and
+          documents are welcome too.
         </p>
       </div>
 
-      <p className="muted-note">
-        Photographs of things he made or owned live under{" "}
-        <Link href="/artifacts">{ARTIFACTS_LABEL}</Link>.
-      </p>
-
       {failed ? (
         <p className="form-error">
-          The gallery can&rsquo;t be loaded just now. Please try again shortly.
+          This page can&rsquo;t be loaded just now. Please try again shortly.
         </p>
       ) : photos.length === 0 ? (
         <p className="prose empty-state">
-          The gallery is still being put together.{" "}
+          Nothing here yet.{" "}
           {imagesConfigured() ? (
             <>
-              If you have photographs of Joe, <Link href="/photos/add">please send them</Link>{" "}
-              &mdash; they&rsquo;ll appear here.
+              If you have something he made, or something of his worth keeping,{" "}
+              <Link href="/photos/add?kind=artifact">please send a picture of it</Link> &mdash;
+              it&rsquo;ll appear here.
             </>
           ) : (
-            <>If you have photographs of Joe, there will be a way to add them shortly.</>
+            <>There will be a way to add things here shortly.</>
           )}
         </p>
       ) : (

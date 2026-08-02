@@ -4,14 +4,23 @@ import Link from "next/link";
 import Script from "next/script";
 import { useEffect, useRef, useState } from "react";
 import { requestUploads, recordPhotos, type Submission } from "./actions";
+import { ARTIFACTS_LABEL } from "@/lib/sections";
 
-type Picked = { file: File; caption: string; year: string; key: string };
+type Kind = "photo" | "artifact";
+
+type Picked = { file: File; caption: string; year: string; kind: Kind; key: string };
 
 const MAX_FILES = 12;
 const MAX_BYTES = 25 * 1024 * 1024;
 const ACCEPT = "image/jpeg,image/png,image/heic,image/heif,image/webp,image/tiff,image/gif";
 
-export default function PhotoForm({ siteKey }: { siteKey?: string }) {
+export default function PhotoForm({
+  siteKey,
+  defaultKind = "photo",
+}: {
+  siteKey?: string;
+  defaultKind?: Kind;
+}) {
   const [picked, setPicked] = useState<Picked[]>([]);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -19,6 +28,9 @@ export default function PhotoForm({ siteKey }: { siteKey?: string }) {
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(0);
+  // Which galleries the batch went to, so the thank-you can link to the right
+  // one. Read off what actually uploaded, not what was picked.
+  const [savedKinds, setSavedKinds] = useState<Kind[]>([]);
   const [verifying, setVerifying] = useState(false);
   // Implicit rendering gives no event for "the widget appeared" — Cloudflare's
   // script just scans the DOM once it loads. Polling the container for the
@@ -77,7 +89,16 @@ export default function PhotoForm({ siteKey }: { siteKey?: string }) {
       setError(`"${tooBig.name}" is larger than 25 MB. Please send that one to contact@joeweisman.org instead.`);
       return;
     }
-    const next = [...picked, ...files.map((f) => ({ file: f, caption: "", year: "", key: `${f.name}-${f.size}-${f.lastModified}` }))];
+    const next = [
+      ...picked,
+      ...files.map((f) => ({
+        file: f,
+        caption: "",
+        year: "",
+        kind: defaultKind,
+        key: `${f.name}-${f.size}-${f.lastModified}`,
+      })),
+    ];
     const unique = next.filter((p, i) => next.findIndex((x) => x.key === p.key) === i);
     if (unique.length > MAX_FILES) {
       setError(`Please send up to ${MAX_FILES} photos at a time. You can come back and add more.`);
@@ -210,6 +231,7 @@ export default function PhotoForm({ siteKey }: { siteKey?: string }) {
                 expiresAt: ticket.expiresAt,
                 caption: picked[i].caption,
                 year: picked[i].year,
+                kind: picked[i].kind,
               };
             } else {
               const detail = await up.text().catch(() => "");
@@ -254,6 +276,9 @@ export default function PhotoForm({ siteKey }: { siteKey?: string }) {
         return;
       }
       setSaved(rec.saved);
+      setSavedKinds(
+        Array.from(new Set(done.map((d) => (d.kind === "artifact" ? "artifact" : "photo")))),
+      );
       setPicked([]);
     } catch (err) {
       console.error(`Photo submission failed at stage "${stage}":`, err);
@@ -290,9 +315,16 @@ export default function PhotoForm({ siteKey }: { siteKey?: string }) {
         <button type="button" className="btn-quiet" onClick={() => setSaved(0)}>
           Send more
         </button>{" "}
-        <Link href="/photos" className="btn-quiet">
-          View the gallery
-        </Link>
+        {savedKinds.includes("photo") && (
+          <Link href="/photos" className="btn-quiet">
+            View the photographs
+          </Link>
+        )}{" "}
+        {savedKinds.includes("artifact") && (
+          <Link href="/artifacts" className="btn-quiet">
+            View {ARTIFACTS_LABEL.toLowerCase()}
+          </Link>
+        )}
       </div>
     );
   }
@@ -309,10 +341,12 @@ export default function PhotoForm({ siteKey }: { siteKey?: string }) {
       )}
 
       <section id="add" className="add-entry">
-        <h2>Send your photographs</h2>
+        <h2>{defaultKind === "artifact" ? "Send something of his" : "Send your photographs"}</h2>
         <p className="muted-note">
-          Anything at all — the boat, the commune, a sauna he built, a kitchen he
-          improved. They&rsquo;ll appear here once someone has looked at them.
+          Anything at all &mdash; the boat, the commune, a sauna he built, a
+          kitchen he improved. Pictures of things he made, marked, or kept go to{" "}
+          <Link href="/artifacts">{ARTIFACTS_LABEL.toLowerCase()}</Link>; mark
+          each one below. They&rsquo;ll appear once someone has looked at them.
         </p>
 
         <form onSubmit={submit} className="form">
@@ -350,6 +384,37 @@ export default function PhotoForm({ siteKey }: { siteKey?: string }) {
                       Remove
                     </button>
                   </div>
+                  {/* Per file rather than per submission: a batch straight off
+                      a phone is often a mix, and captions and years are already
+                      per file, so this is the same shape. Whatever gets chosen,
+                      the admin page can move it afterwards. */}
+                  <fieldset className="kind-choice">
+                    <legend className="picked-caption-label">What is this?</legend>
+                    {(
+                      [
+                        ["photo", "Photograph of Joe"],
+                        ["artifact", "Something he made or owned"],
+                      ] as const
+                    ).map(([value, label]) => (
+                      <label key={value} className="kind-option">
+                        <input
+                          type="radio"
+                          name={`kind-${i}`}
+                          value={value}
+                          checked={p.kind === value}
+                          disabled={busy}
+                          onChange={() =>
+                            setPicked(
+                              picked.map((x) =>
+                                x.key === p.key ? { ...x, kind: value } : x,
+                              ),
+                            )
+                          }
+                        />
+                        <span>{label}</span>
+                      </label>
+                    ))}
+                  </fieldset>
                   <label htmlFor={`cap-${i}`} className="picked-caption-label">
                     Caption <span className="optional">(optional)</span>
                   </label>

@@ -1,5 +1,21 @@
 import { db } from "./db";
 
+/**
+ * Which gallery a photograph belongs to.
+ *
+ * 'artifact' covers anything with his hand on it — built, annotated, or simply
+ * his: the harpsichord, a shelving unit, an marked-up recipe, his block-print
+ * handwriting. Everything else is 'photo'.
+ */
+export type PhotoKind = "photo" | "artifact";
+
+export const PHOTO_KINDS: PhotoKind[] = ["photo", "artifact"];
+
+/** Narrow untrusted input to a kind, defaulting to the safer 'photo'. */
+export function parseKind(input: unknown): PhotoKind {
+  return input === "artifact" ? "artifact" : "photo";
+}
+
 export type Photo = {
   id: string;
   storage_ref: string;
@@ -7,6 +23,7 @@ export type Photo = {
   submitter: string | null;
   created_at: Date;
   taken_year: number | null;
+  kind: PhotoKind;
 };
 
 export type PendingPhoto = Photo & { email: string | null; status: string };
@@ -23,12 +40,15 @@ export type PendingPhoto = Photo & { email: string | null; status: string };
  * are confirmed; see PLAN.md.
  *
  * Selects only what the public page renders — never email.
+ *
+ * Takes the kind explicitly rather than defaulting, so adding a third gallery
+ * can't silently start dropping rows out of an existing one.
  */
-export async function getApprovedPhotos(): Promise<Photo[]> {
+export async function getApprovedPhotos(kind: PhotoKind): Promise<Photo[]> {
   return (await db()`
-    select id, storage_ref, caption, submitter, created_at, taken_year
+    select id, storage_ref, caption, submitter, created_at, taken_year, kind
     from photos
-    where status = 'approved'
+    where status = 'approved' and kind = ${kind}
     order by sort_order nulls last, created_at desc
   `) as Photo[];
 }
@@ -36,7 +56,7 @@ export async function getApprovedPhotos(): Promise<Photo[]> {
 /** Everything awaiting review, oldest first so nothing sits forgotten. */
 export async function getPendingPhotos(): Promise<PendingPhoto[]> {
   return (await db()`
-    select id, storage_ref, caption, submitter, email, status, created_at
+    select id, storage_ref, caption, submitter, email, status, created_at, kind
     from photos
     where status = 'pending'
     order by created_at

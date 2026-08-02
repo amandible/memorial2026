@@ -9,6 +9,7 @@ import EntryActions from "./entry-actions";
 import PhotoActions from "./photo-actions";
 import CaptionEditor from "./caption-editor";
 import YearEditor from "./year-editor";
+import KindEditor from "./kind-editor";
 import ExportButton from "./export-button";
 
 export const metadata: Metadata = {
@@ -67,7 +68,7 @@ export default async function AdminPage() {
   // Pending first and oldest first, so nothing waits unnoticed.
   const photos = (await db()`
     select id, storage_ref, caption, submitter, email, status, created_at, archived_at,
-           taken_year, taken_source, exif_taken_at
+           taken_year, taken_source, exif_taken_at, kind
     from photos
     order by (status = 'pending') desc, created_at
     limit 200
@@ -83,6 +84,7 @@ export default async function AdminPage() {
     taken_year: number | null;
     taken_source: string | null;
     exif_taken_at: Date | null;
+    kind: string;
   }[];
 
   return (
@@ -154,6 +156,7 @@ export default async function AdminPage() {
                   <span className="tag tag-pending">not backed up</span>
                 )}
                 <CaptionEditor id={p.id} caption={p.caption} />
+                <KindEditor id={p.id} kind={p.kind} />
                 <YearEditor
                   id={p.id}
                   year={p.taken_year}

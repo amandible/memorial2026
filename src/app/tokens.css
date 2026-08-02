@@ -377,6 +377,16 @@ body {
 }
 .field input[type="file"] { font-family: var(--body); font-size: var(--size-small); padding: .6rem 0; }
 
+/* Photograph-or-artifact, per picked file. A fieldset for the grouping the
+   screen reader needs, stripped of the browser's default border and inset. */
+.kind-choice { border: 0; margin: 0 0 .6rem; padding: 0; display: flex; flex-wrap: wrap; gap: .15rem 1rem; }
+.kind-choice legend { padding: 0; }
+/* Wraps to its own line on a narrow screen rather than squeezing the labels.
+   The whole label is the hit target, which on a phone is the difference between
+   tapping a 13px dot and tapping the words. */
+.kind-option { display: flex; align-items: center; gap: .4rem; font-size: var(--size-small); cursor: pointer; }
+.kind-option input[type="radio"] { width: 1.1rem; height: 1.1rem; margin: 0; flex: none; accent-color: var(--link); }
+
 .gallery figcaption .credit { color: var(--muted); font-style: normal; }
 
 /* Moderation grid */
