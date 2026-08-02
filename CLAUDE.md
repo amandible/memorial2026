@@ -42,6 +42,7 @@ machine. Never kill a process by name to free a port; find another port.
 | `npm test` | Runs `tests/*.test.mts` on Node's built-in test runner, no test framework dependency |
 | `npm run migrate` | Applies any unapplied numbered `.sql` file in `db/` against Neon |
 | `npm run archive` | Copies any approved photo not yet backed up to R2 |
+| `npm run dimensions` | Fills in pixel size for any photo missing it (`-- --all` re-measures everything) |
 | `npm run archive -- --pull` | Downloads the whole R2 photo archive to `media/archive/` (gitignored) |
 
 Single test file: `node --experimental-strip-types --test tests/turnstile.test.mts`.
@@ -82,6 +83,29 @@ populated only on admin approval, and handles HEIC transcode/thumbnails/delivery
 Visitor photos are never routed through `next/image` — see the `sharp`/libvips note
 in `AGENTS.md` §12 — `next/image` is reserved for curated assets (`public/`).
 
+**Artifacts are photographs with a `kind`, not a second entity.** `photos.kind`
+is `'photo' | 'artifact'`; `/photos` and `/artifacts` are the same `Gallery`
+component over `getApprovedPhotos(kind)`, which takes the kind explicitly so a
+third gallery can't silently start dropping rows out of an existing one. The
+section's display name lives in `ARTIFACTS_LABEL` (`src/lib/sections.ts`) because
+it may change; the `/artifacts` URL deliberately doesn't derive from it, since
+that URL ends up in email and print.
+
+**Submissions that aren't photographs go to `artifact_files`, never to
+`photos`.** They have no Cloudflare Images id and no viewable derivative, so
+putting them in `photos` would mean every gallery query and the archive job had
+to learn to skip them — and the first one that slipped through would have a
+gallery rendering an audio file as an `<img>`. They upload straight to R2 via a
+presigned PUT (`presignPut` in `r2.ts`), because a server action on Vercel caps
+its body near 1 MB. **Nothing in that table is ever served publicly and no route
+should ever serve it** — a stranger-supplied `.html` or `.svg` on our own origin
+is stored XSS, and extension filtering doesn't fix that; not serving them does.
+The single exception is `/admin/files/[id]`, which is admin-gated and forces
+`application/octet-stream` + `Content-Disposition: attachment` + `nosniff`
+rather than trusting the uploader's claimed type. **This requires a CORS policy
+on the R2 bucket** (`PUT` from the site origins) — without it the browser's
+preflight fails and uploads report a connection error; see `README.md`.
+
 **Admin auth is split across two files on purpose.** `src/lib/admin-password.ts`
 holds the password/token crypto with no `next/*` imports, so it's unit-testable
 outside the framework; `src/lib/admin-auth.ts` layers the cookie session on top and
@@ -96,6 +120,30 @@ unreachable is a per-form judgment call. Guestbook denies on outage (entries
 publish immediately to a public page); forms writing only to private data may
 allow. Match this pattern for any new form rather than hardcoding one behavior.
 
+**On the client, never probe Turnstile's DOM — check for `window.turnstile`.**
+The widget renders into a *shadow root*, so `querySelector("iframe")` on its
+container finds nothing no matter how well it is working. A poll written that way
+tells every visitor the form is broken while the widget above it reads "Success!"
+— which is exactly what happened, and it looks like an intermittent bug because
+the message only appears once the timeout elapses. The only thing that status text
+is really about is whether an extension blocked `challenges.cloudflare.com`, and
+the missing global is precisely what that looks like. Related: the submit path in
+`src/app/photos/form.tsx` always calls `waitForToken()` and never refuses to try
+based on that status — the status picks the wording, it does not gate submission.
+A token expires after 300s and this form takes longer than that to fill in, so
+"looks unready" and "will fail" are different claims.
+
+**A Turnstile token can only be validated once** — a replay comes back
+`timeout-or-duplicate`. This is why `requestUploads` takes both the photo count
+and the list of other files in a single call and issues Cloudflare Images
+tickets and presigned R2 URLs together: two `verifyTurnstile` calls would need
+two solved challenges, the second landing halfway through a submission that had
+already started uploading. If a third kind of upload is ever added, widen that
+one call rather than adding a second verification. The follow-up actions
+(`recordPhotos`, `recordArtifactFiles`) don't verify at all — they authenticate
+with the HMAC upload handle from `src/lib/upload-handle.ts`, which is what
+carries the original verification across to the recording step.
+
 **`/api/health`** is the UptimeRobot target — it returns 503 only for a real
 visitor-facing outage (DB unreachable, or `TURNSTILE_SECRET` missing in prod).
 Optional services being merely unconfigured report as `degraded` in the body
@@ -109,6 +157,13 @@ at build time, a year-three failure mode `PLAN.md` §11 explains).
 
 ## Git commits
 
+- **Before editing anything, confirm you are level with `origin/main`.** More than
+  one person works on this repo. Run `git fetch && git status` and read the
+  "behind by N commits" line — `git fetch` alone updates the remote-tracking ref
+  and leaves your working copy where it was, so it is possible to `--all` your way
+  to a correct answer about the remote while patching stale files. That happened:
+  six of Luke's commits landed between a pull and the next fetch, and edits were
+  written against his older versions of files he had since rewritten.
 - **Do not include Claude attribution in commit messages.** No `Co-Authored-By`,
   no "Generated with" footer.
 - **Never `git add -A` or `git add .`** — stage explicit paths, or `git add -u`.

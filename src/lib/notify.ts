@@ -88,6 +88,37 @@ export async function notifyGuestbookEntry(entry: {
 }
 
 /**
+ * Files that aren't photographs have arrived in the archive.
+ *
+ * Worth its own notification rather than folding into the photo one: these
+ * appear nowhere on the site and nothing surfaces them, so if nobody reads the
+ * email nobody finds out they exist.
+ */
+export async function notifyArtifactFiles(details: {
+  count: number;
+  submitter: string | null;
+  email: string | null;
+  files: { filename: string; description: string }[];
+}): Promise<void> {
+  const { count, submitter, email, files } = details;
+  const who = submitter || "Someone";
+
+  await send(
+    `Artifact files: ${count} from ${who}`,
+    [
+      `${who} sent ${count === 1 ? "a file" : `${count} files`} that ${count === 1 ? "isn't a photograph" : "aren't photographs"}.`,
+      email ? `Their email: ${email}` : "No email given.",
+      "",
+      ...files.map((f) => `  • ${f.filename}${f.description ? ` — ${f.description}` : ""}`),
+      "",
+      "These are in the private archive only. Nothing shows them on the site.",
+      "Download and decide what to do with them here:",
+      adminUrl(),
+    ].join("\n"),
+  );
+}
+
+/**
  * Photographs have been submitted and are waiting for review.
  *
  * One email per submission, not per photo — someone sending twelve pictures

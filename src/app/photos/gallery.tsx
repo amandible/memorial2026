@@ -10,6 +10,7 @@ export type GalleryPhoto = {
   full: string;
   caption: string | null;
   submitter: string | null;
+  year: number | null;
 };
 
 /**
@@ -23,6 +24,24 @@ export type GalleryPhoto = {
  * optimizer runs sharp over the file, and these come from strangers — the
  * security boundary in PLAN.md §12.
  */
+/**
+ * Show the year only when the caption doesn't already say it.
+ *
+ * Most captions carry the date themselves — "Joe at Burning Man in 2015",
+ * "Thanksgiving, 2011" — and 12 of the first 14 dated photographs read as
+ * "…in 2015  2015". The year is worth showing when it adds something and
+ * clutter when it doesn't.
+ *
+ * Matches the exact year only. If a caption says 2013 and the stored year is
+ * 2015 they disagree, and showing both surfaces that for an admin to fix rather
+ * than quietly hiding one.
+ */
+function yearWorthShowing(year: number | null, caption: string | null): number | null {
+  if (!year) return null;
+  if (caption && caption.includes(String(year))) return null;
+  return year;
+}
+
 export default function Gallery({ photos }: { photos: GalleryPhoto[] }) {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
   const dialogRef = useRef<HTMLDialogElement>(null);
@@ -79,13 +98,19 @@ export default function Gallery({ photos }: { photos: GalleryPhoto[] }) {
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={p.thumb} alt={p.caption ?? "A photograph of Joe Weisman"} loading="lazy" decoding="async" />
             </button>
-            {(p.caption || p.submitter) && (
-              <p className="gallery-caption">
-                {p.caption}
-                {p.caption && p.submitter && " "}
-                {p.submitter && <span className="credit">&mdash; {p.submitter}</span>}
-              </p>
-            )}
+            {(() => {
+              const yr = yearWorthShowing(p.year, p.caption);
+              if (!p.caption && !p.submitter && !yr) return null;
+              return (
+                <p className="gallery-caption">
+                  {p.caption}
+                  {p.caption && (p.submitter || yr) && " "}
+                  {yr && <span className="photo-year">{yr}</span>}
+                  {yr && p.submitter && " "}
+                  {p.submitter && <span className="credit">&mdash; {p.submitter}</span>}
+                </p>
+              );
+            })()}
           </li>
         ))}
       </ul>
@@ -130,13 +155,19 @@ export default function Gallery({ photos }: { photos: GalleryPhoto[] }) {
               </button>
             </div>
 
-            {(current.caption || current.submitter) && (
-              <p className="lightbox-caption">
-                {current.caption}
-                {current.caption && current.submitter && " "}
-                {current.submitter && <span className="credit">&mdash; {current.submitter}</span>}
-              </p>
-            )}
+            {(() => {
+              const yr = yearWorthShowing(current.year, current.caption);
+              if (!current.caption && !current.submitter && !yr) return null;
+              return (
+                <p className="lightbox-caption">
+                  {current.caption}
+                  {current.caption && (current.submitter || yr) && " "}
+                  {yr && <span className="photo-year">{yr}</span>}
+                  {yr && current.submitter && " "}
+                  {current.submitter && <span className="credit">&mdash; {current.submitter}</span>}
+                </p>
+              );
+            })()}
 
             <button type="button" className="lightbox-close btn-quiet" onClick={close}>
               Close

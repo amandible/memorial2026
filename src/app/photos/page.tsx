@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import Gallery from "./gallery";
 import { getApprovedPhotos } from "@/lib/photos";
+import { ARTIFACTS_LABEL } from "@/lib/sections";
 import { imageUrl, thumbUrl, imagesConfigured } from "@/lib/cf-images";
 
 export const metadata: Metadata = { title: "Photographs" };
@@ -13,7 +14,7 @@ export default async function PhotosPage() {
   let photos: Awaited<ReturnType<typeof getApprovedPhotos>> = [];
   let failed = false;
   try {
-    photos = await getApprovedPhotos();
+    photos = await getApprovedPhotos("photo");
   } catch (e) {
     // A database problem shouldn't take the page down — the gallery below still tries.
     console.error("Failed to load photos:", e);
@@ -35,6 +36,11 @@ export default async function PhotosPage() {
           reload button.
         </p>
       </div>
+
+      <p className="muted-note">
+        Photographs of things he made or owned live under{" "}
+        <Link href="/artifacts">{ARTIFACTS_LABEL}</Link>.
+      </p>
 
       {failed ? (
         <p className="form-error">
@@ -60,6 +66,7 @@ export default async function PhotosPage() {
             full: imageUrl(p.storage_ref),
             caption: p.caption,
             submitter: p.submitter,
+            year: p.taken_year,
           }))}
         />
       )}

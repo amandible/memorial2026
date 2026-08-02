@@ -8,6 +8,10 @@ import LoginForm from "./login-form";
 import EntryActions from "./entry-actions";
 import PhotoActions from "./photo-actions";
 import CaptionEditor from "./caption-editor";
+import YearEditor from "./year-editor";
+import KindEditor from "./kind-editor";
+import FileActions from "./file-actions";
+import { getArtifactFiles, formatBytes } from "@/lib/artifact-files";
 import ExportButton from "./export-button";
 
 export const metadata: Metadata = {
@@ -17,6 +21,36 @@ export const metadata: Metadata = {
 };
 
 export const dynamic = "force-dynamic";
+
+/**
+ * Pixel size, with a word about it when it's small enough to matter.
+ *
+ * Two jobs: confirming at a glance that a photograph arrived whole, and finding
+ * the ones that won't survive being printed or projected at the service. The
+ * thresholds are about print — a 5×7 at 300dpi wants about 3 MP, so 2 MP is
+ * already tight and half a megapixel is screen-only.
+ */
+function describeResolution(width: number | null, height: number | null) {
+  if (!width || !height) {
+    // Not a fault: everything submitted before this was recorded reads as
+    // unknown until `npm run dimensions` has been over it.
+    return <span className="mod-year-source">size unknown</span>;
+  }
+
+  const megapixels = (width * height) / 1_000_000;
+  const note =
+    megapixels < 0.4 ? "very small" : megapixels < 2 ? "small for print" : null;
+
+  return (
+    <>
+      <span className="res">
+        {width} &times; {height}
+      </span>{" "}
+      <span className="mod-year-source">{megapixels.toFixed(1)} MP</span>
+      {note && <span className="tag tag-attention">{note}</span>}
+    </>
+  );
+}
 
 type Row = {
   id: string;
@@ -63,11 +97,14 @@ export default async function AdminPage() {
     photos_unarchived: number;
   }[];
 
-  // Pending first and oldest first, so nothing waits unnoticed.
+  // Pending first, so nothing waits unnoticed — but newest first within each
+  // group, matching the public gallery. Oldest-first buried a photograph that
+  // had just arrived at the bottom of a long page.
   const photos = (await db()`
-    select id, storage_ref, caption, submitter, email, status, created_at, archived_at
+    select id, storage_ref, caption, submitter, email, status, created_at, archived_at,
+           taken_year, taken_source, exif_taken_at, kind, width, height
     from photos
-    order by (status = 'pending') desc, created_at
+    order by (status = 'pending') desc, created_at desc
     limit 200
   `) as {
     id: string;
@@ -78,7 +115,22 @@ export default async function AdminPage() {
     status: "pending" | "approved" | "rejected";
     created_at: Date;
     archived_at: Date | null;
+    taken_year: number | null;
+    taken_source: string | null;
+    exif_taken_at: Date | null;
+    kind: string;
+    width: number | null;
+    height: number | null;
   }[];
+
+  // A failure here shouldn't cost the whole admin page — photos and the
+  // guestbook still need moderating if R2 or this table is unhappy.
+  let files: Awaited<ReturnType<typeof getArtifactFiles>> = [];
+  try {
+    files = await getArtifactFiles();
+  } catch (e) {
+    console.error("Failed to load artifact files:", e);
+  }
 
   return (
     <main className="page page-wide" id="main">
@@ -149,13 +201,58 @@ export default async function AdminPage() {
                   <span className="tag tag-pending">not backed up</span>
                 )}
                 <CaptionEditor id={p.id} caption={p.caption} />
+                <KindEditor id={p.id} kind={p.kind} />
+                <YearEditor
+                  id={p.id}
+                  year={p.taken_year}
+                  source={p.taken_source}
+                  exifTakenAt={p.exif_taken_at}
+                />
                 <span className="mod-meta">
                   {p.submitter ?? "anonymous"}
                   {p.email && <> &middot; {p.email}</>}
                 </span>
+                <span className="mod-meta">{describeResolution(p.width, p.height)}</span>
               </figcaption>
               <PhotoActions id={p.id} status={p.status} />
             </figure>
+          ))}
+        </div>
+      )}
+
+      <h2>Archive files</h2>
+      <p className="muted-note">
+        Submissions that aren&rsquo;t photographs. These appear nowhere on the
+        site &mdash; nothing links to them and no page renders them. Download one
+        to see what it is, then decide by hand what to do with it.
+      </p>
+      {files.length === 0 ? (
+        <p className="muted-note">None submitted yet.</p>
+      ) : (
+        <div className="entries">
+          {files.map((f) => (
+            <article key={f.id} className={f.status === "rejected" ? "entry is-removed" : "entry"}>
+              <header className="entry-head">
+                <span className="entry-name">
+                  <span className={`tag tag-${f.status}`}>{f.status}</span>{" "}
+                  {/* Plain <a>, not <Link>: this is a file download, not a
+                      navigation, and prefetching it would pull the bytes. */}
+                  <a href={`/admin/files/${f.id}`} download>
+                    {f.filename}
+                  </a>
+                </span>
+                <span className="entry-date">
+                  {formatBytes(f.byte_size)} &middot; {formatDate(f.created_at)}
+                </span>
+              </header>
+              {f.description && <p className="entry-message">{f.description}</p>}
+              <p className="mod-meta">
+                {f.submitter ?? "anonymous"}
+                {f.email && <> &middot; {f.email}</>}
+                {f.content_type && <> &middot; claimed {f.content_type}</>}
+              </p>
+              <FileActions id={f.id} status={f.status} />
+            </article>
           ))}
         </div>
       )}

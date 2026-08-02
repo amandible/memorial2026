@@ -1,5 +1,3 @@
-import { createHmac, timingSafeEqual } from "node:crypto";
-
 /**
  * Cloudflare Images.
  *
@@ -100,41 +98,5 @@ export async function deleteImage(id: string): Promise<void> {
   }).catch((e) => console.error("Failed to delete image", id, e));
 }
 
-/**
- * A short-lived signature binding an image id to a verified upload request.
- *
- * The browser has to make two calls — one to get an upload URL, one to record
- * the photo once it has uploaded — and Turnstile is checked on the first. This
- * carries that verification across to the second, so the recording endpoint
- * cannot be called with arbitrary image ids by anyone who skips the form.
- */
-const HANDLE_TTL_MS = 60 * 60_000;
-
-function handleSecret(): string {
-  // Reuses the admin password purely as server-side key material; it is never
-  // exposed and this grants no admin capability.
-  const s = process.env.ADMIN_PASSWORD || process.env.TURNSTILE_SECRET;
-  if (!s) throw new Error("No server secret available to sign upload handles.");
-  return s;
-}
-
-export function signUploadHandle(id: string, expiresAt: number): string {
-  return createHmac("sha256", handleSecret()).update(`${id}:${expiresAt}`).digest("hex");
-}
-
-export function newUploadHandle(id: string): { handle: string; expiresAt: number } {
-  const expiresAt = Date.now() + HANDLE_TTL_MS;
-  return { handle: signUploadHandle(id, expiresAt), expiresAt };
-}
-
-export function verifyUploadHandle(id: string, expiresAt: number, handle: string): boolean {
-  if (!Number.isFinite(expiresAt) || Date.now() > expiresAt) return false;
-  const expected = signUploadHandle(id, expiresAt);
-  const a = Buffer.from(expected, "utf8");
-  const b = Buffer.from(handle, "utf8");
-  if (a.length !== b.length) {
-    timingSafeEqual(a, a);
-    return false;
-  }
-  return timingSafeEqual(a, b);
-}
+// The upload handles that pair with createDirectUpload() live in
+// upload-handle.ts — they sign R2 object keys as well as image ids.
