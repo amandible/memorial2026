@@ -26,10 +26,14 @@ export default async function ArtifactsPage() {
       <h1 className="page-title">{ARTIFACTS_LABEL}</h1>
       <hr className="rule" />
 
+      <blockquote className="epigraph">
+        <p>Work for beauty as for bread.</p>
+        <cite>The motto on the harpsichord he built</cite>
+      </blockquote>
+
       <p className="prose">
         Things Joe made, marked, or kept. He built a sauna wherever he lived, and
-        left behind fish ponds, shelving units, improved kitchens, and a
-        harpsichord bearing the motto <em>work for beauty as for bread</em>. He
+        left behind fish ponds, shelving units, and improved kitchens. He
         annotated his recipes, sharpened other people&rsquo;s knives, folded
         origami dollar bills, and wrote in a block-print hand that was
         unmistakably his.

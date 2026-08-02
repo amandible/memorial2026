@@ -377,6 +377,16 @@ body {
 }
 .field input[type="file"] { font-family: var(--body); font-size: var(--size-small); padding: .6rem 0; }
 
+/* The motto he cut into the harpsichord he built. Set in the display face and
+   left unquoted — the attribution below already says it is his, and quote marks
+   would make it look borrowed from someone else. */
+.epigraph { margin: 0 0 var(--s4); max-width: var(--measure); }
+.epigraph p {
+  font-family: var(--display); font-size: 1.4rem; line-height: var(--leading-tight);
+  font-style: italic; margin: 0 0 .4rem;
+}
+.epigraph cite { display: block; font-style: normal; font-size: var(--size-small); color: var(--muted); }
+
 /* Photograph-or-artifact, per picked file. A fieldset for the grouping the
    screen reader needs, stripped of the browser's default border and inset. */
 .kind-choice { border: 0; margin: 0 0 .6rem; padding: 0; display: flex; flex-wrap: wrap; gap: .15rem 1rem; }

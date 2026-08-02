@@ -157,6 +157,42 @@ export async function purgePhoto(id: string): Promise<void> {
   revalidatePath("/admin");
 }
 
+/**
+ * Mark an archived file as kept or not wanted.
+ *
+ * Nothing here is public, so this is triage rather than moderation: 'approved'
+ * means someone has looked at it and wants it, 'rejected' means it can go. The
+ * file stays in R2 either way until it is deliberately purged.
+ */
+export async function setArtifactFileStatus(
+  id: string,
+  status: "pending" | "approved" | "rejected",
+): Promise<void> {
+  if (!(await isAdmin())) throw new Error("Not authorised.");
+
+  await db()`
+    update artifact_files
+    set status = ${status}, reviewed_at = now()
+    where id = ${id}::uuid
+  `;
+  revalidatePath("/admin");
+}
+
+/** Delete a rejected file for good, removing it from R2 too. */
+export async function purgeArtifactFile(id: string): Promise<void> {
+  if (!(await isAdmin())) throw new Error("Not authorised.");
+
+  const [row] = (await db()`
+    select storage_key from artifact_files where id = ${id}::uuid and status = 'rejected'
+  `) as { storage_key: string }[];
+  // Only rejected files can be purged, so nothing goes by mistake.
+  if (!row) return;
+
+  await deleteObject(row.storage_key);
+  await db()`delete from artifact_files where id = ${id}::uuid`;
+  revalidatePath("/admin");
+}
+
 export async function exportContactsCsv(): Promise<string> {
   if (!(await isAdmin())) throw new Error("Not authorised.");
 

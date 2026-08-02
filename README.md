@@ -310,6 +310,8 @@ submission, however many pictures it contained.
 |---|---|
 | **Guestbook** | Entries publish **immediately**. That is deliberate — a tribute that vanishes on submit reads as broken to the person who wrote it. *Hide* removes it from the public page; the row survives and *Restore* brings it back. |
 | **Photos** | Held as `pending` and invisible until you *Approve*. *Reject* hides it reversibly. *Delete for good* appears only on already-rejected photos and also removes the file from Cloudflare — the one irreversible action here. |
+| **Photographs vs. artifacts** | Every picture is one or the other, and shows on `/photos` or `/artifacts` accordingly. Submitters choose, and get it wrong both ways — *Move to artifacts* / *Move to photographs* fixes it in one click. |
+| **Archive files** | Submissions that aren't pictures: recordings, scans, documents. **These appear nowhere on the site** and nothing links to them. Download one to see what it is, then *Keep* or *Not wanted*. What to do with them after that is a hand decision, like the recipes. |
 | **Email list** | The count is on the dashboard. Export and send by hand from Gmail, BCC (see below). |
 
 Rate limits, if someone reports being blocked: five guestbook entries and forty photos per
@@ -370,6 +372,49 @@ Done once. Recorded here so it isn't lost.
 5. **Wait a few minutes** for the certificate. Because the domain is registered at
    Cloudflare, the nameservers were always Cloudflare's — there's no nameserver
    propagation to wait out, only records.
+
+### CORS on the R2 bucket — required for non-photo submissions
+
+Files that aren't pictures go **straight from the visitor's browser to R2**, using a
+presigned URL, because a Vercel server action caps its request body around 1 MB and a
+recording or a scan is bigger than that. A cross-origin `PUT` is not a "simple" request,
+so the browser sends a preflight first — and without a CORS policy R2 answers `403` with
+no CORS headers and the upload never happens.
+
+Photographs are unaffected: they go to Cloudflare Images, which sets its own CORS.
+
+Cloudflare dashboard → **R2** → the bucket → **Settings** → **CORS policy** → *Add*:
+
+```json
+[
+  {
+    "AllowedOrigins": [
+      "https://joeweisman.org",
+      "https://www.joeweisman.org",
+      "http://localhost:3117"
+    ],
+    "AllowedMethods": ["PUT"],
+    "AllowedHeaders": ["*"],
+    "MaxAgeSeconds": 3600
+  }
+]
+```
+
+`PUT` only — nothing needs to read from the bucket in a browser, and it must stay that
+way. The archive is private; the admin download route reads it server-side.
+
+Check it from a terminal — `access-control-allow-origin` should come back set:
+
+```bash
+curl -s -o /dev/null -D - -X OPTIONS \
+  -H 'Origin: https://joeweisman.org' \
+  -H 'Access-Control-Request-Method: PUT' \
+  "https://<R2_ACCOUNT_ID>.r2.cloudflarestorage.com/<R2_BUCKET>/artifacts/x" \
+  | grep -i 'access-control\|^HTTP'
+```
+
+Until this is set, sending a non-photo file fails with a connection error that points the
+visitor at `contact@joeweisman.org`. Nothing is silently lost, but nothing arrives either.
 
 ---
 

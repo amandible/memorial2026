@@ -10,6 +10,8 @@ import PhotoActions from "./photo-actions";
 import CaptionEditor from "./caption-editor";
 import YearEditor from "./year-editor";
 import KindEditor from "./kind-editor";
+import FileActions from "./file-actions";
+import { getArtifactFiles, formatBytes } from "@/lib/artifact-files";
 import ExportButton from "./export-button";
 
 export const metadata: Metadata = {
@@ -86,6 +88,15 @@ export default async function AdminPage() {
     exif_taken_at: Date | null;
     kind: string;
   }[];
+
+  // A failure here shouldn't cost the whole admin page — photos and the
+  // guestbook still need moderating if R2 or this table is unhappy.
+  let files: Awaited<ReturnType<typeof getArtifactFiles>> = [];
+  try {
+    files = await getArtifactFiles();
+  } catch (e) {
+    console.error("Failed to load artifact files:", e);
+  }
 
   return (
     <main className="page page-wide" id="main">
@@ -170,6 +181,43 @@ export default async function AdminPage() {
               </figcaption>
               <PhotoActions id={p.id} status={p.status} />
             </figure>
+          ))}
+        </div>
+      )}
+
+      <h2>Archive files</h2>
+      <p className="muted-note">
+        Submissions that aren&rsquo;t photographs. These appear nowhere on the
+        site &mdash; nothing links to them and no page renders them. Download one
+        to see what it is, then decide by hand what to do with it.
+      </p>
+      {files.length === 0 ? (
+        <p className="muted-note">None submitted yet.</p>
+      ) : (
+        <div className="entries">
+          {files.map((f) => (
+            <article key={f.id} className={f.status === "rejected" ? "entry is-removed" : "entry"}>
+              <header className="entry-head">
+                <span className="entry-name">
+                  <span className={`tag tag-${f.status}`}>{f.status}</span>{" "}
+                  {/* Plain <a>, not <Link>: this is a file download, not a
+                      navigation, and prefetching it would pull the bytes. */}
+                  <a href={`/admin/files/${f.id}`} download>
+                    {f.filename}
+                  </a>
+                </span>
+                <span className="entry-date">
+                  {formatBytes(f.byte_size)} &middot; {formatDate(f.created_at)}
+                </span>
+              </header>
+              {f.description && <p className="entry-message">{f.description}</p>}
+              <p className="mod-meta">
+                {f.submitter ?? "anonymous"}
+                {f.email && <> &middot; {f.email}</>}
+                {f.content_type && <> &middot; claimed {f.content_type}</>}
+              </p>
+              <FileActions id={f.id} status={f.status} />
+            </article>
           ))}
         </div>
       )}

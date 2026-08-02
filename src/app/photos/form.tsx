@@ -3,16 +3,75 @@
 import Link from "next/link";
 import Script from "next/script";
 import { useEffect, useRef, useState } from "react";
-import { requestUploads, recordPhotos, type Submission } from "./actions";
+import {
+  requestUploads,
+  recordPhotos,
+  recordArtifactFiles,
+  type Submission,
+  type FileSubmission,
+} from "./actions";
 import { ARTIFACTS_LABEL } from "@/lib/sections";
 
 type Kind = "photo" | "artifact";
 
-type Picked = { file: File; caption: string; year: string; kind: Kind; key: string };
+type Picked = {
+  file: File;
+  caption: string;
+  year: string;
+  kind: Kind;
+  /** Pictures go to Cloudflare Images; everything else goes to the R2 archive. */
+  isImage: boolean;
+  key: string;
+};
 
 const MAX_FILES = 12;
-const MAX_BYTES = 25 * 1024 * 1024;
-const ACCEPT = "image/jpeg,image/png,image/heic,image/heif,image/webp,image/tiff,image/gif";
+const MAX_OTHER_FILES = 6;
+const MAX_IMAGE_BYTES = 25 * 1024 * 1024;
+const MAX_OTHER_BYTES = 100 * 1024 * 1024;
+
+/**
+ * Some browsers report an empty type for HEIC straight off an iPhone — which is
+ * the single most likely thing to arrive here — so fall back to the extension
+ * rather than misrouting a photograph into the file archive, where it would
+ * never reach the gallery.
+ */
+const IMAGE_EXT = /\.(jpe?g|png|heic|heif|webp|tiff?|gif|avif|bmp)$/i;
+
+function isImageFile(f: File): boolean {
+  return f.type.startsWith("image/") || (f.type === "" && IMAGE_EXT.test(f.name));
+}
+
+type UploadOutcome =
+  | { ok: true }
+  | { ok: false; kind: "http"; label: string }
+  | { ok: false; kind: "connection" };
+
+/**
+ * Send one file, retrying only what's worth retrying.
+ *
+ * A dropped connection is usually a one-off blip — weak wifi, a flaky hop — so
+ * retry silently a couple of times before bothering the visitor with it. An HTTP
+ * error response is deterministic: the far end actively rejected the file, and
+ * sending it again will be rejected again.
+ */
+async function uploadWithRetry(send: () => Promise<Response>, label: string): Promise<UploadOutcome> {
+  let lastErr: unknown;
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      const res = await send();
+      if (res.ok) return { ok: true };
+      const detail = await res.text().catch(() => "");
+      console.error("Upload rejected:", label, res.status, detail.slice(0, 300));
+      return { ok: false, kind: "http", label: `${label} (${res.status})` };
+    } catch (err) {
+      lastErr = err;
+      console.warn(`Upload attempt ${attempt} threw for`, label, err);
+      if (attempt < 3) await new Promise((r) => setTimeout(r, 800 * attempt));
+    }
+  }
+  console.error("Upload failed after retries for", label, lastErr);
+  return { ok: false, kind: "connection" };
+}
 
 export default function PhotoForm({
   siteKey,
@@ -31,6 +90,8 @@ export default function PhotoForm({
   // Which galleries the batch went to, so the thank-you can link to the right
   // one. Read off what actually uploaded, not what was picked.
   const [savedKinds, setSavedKinds] = useState<Kind[]>([]);
+  /** Non-photo files in the batch, which have no page to link to. */
+  const [savedFiles, setSavedFiles] = useState(0);
   const [verifying, setVerifying] = useState(false);
   // Implicit rendering gives no event for "the widget appeared" — Cloudflare's
   // script just scans the DOM once it loads. Polling the container for the
@@ -84,24 +145,38 @@ export default function PhotoForm({
     setError(null);
     if (!list) return;
     const files = Array.from(list);
-    const tooBig = files.find((f) => f.size > MAX_BYTES);
+
+    const tooBig = files.find(
+      (f) => f.size > (isImageFile(f) ? MAX_IMAGE_BYTES : MAX_OTHER_BYTES),
+    );
     if (tooBig) {
-      setError(`"${tooBig.name}" is larger than 25 MB. Please send that one to contact@joeweisman.org instead.`);
+      setError(
+        `"${tooBig.name}" is larger than ${isImageFile(tooBig) ? "25 MB" : "100 MB"}. Please send that one to contact@joeweisman.org instead.`,
+      );
       return;
     }
+
     const next = [
       ...picked,
       ...files.map((f) => ({
         file: f,
         caption: "",
         year: "",
-        kind: defaultKind,
+        // A file that isn't a picture is an artifact by definition — there is no
+        // gallery it could go to — so the toggle isn't offered for those.
+        kind: isImageFile(f) ? defaultKind : ("artifact" as Kind),
+        isImage: isImageFile(f),
         key: `${f.name}-${f.size}-${f.lastModified}`,
       })),
     ];
     const unique = next.filter((p, i) => next.findIndex((x) => x.key === p.key) === i);
-    if (unique.length > MAX_FILES) {
+
+    if (unique.filter((p) => p.isImage).length > MAX_FILES) {
       setError(`Please send up to ${MAX_FILES} photos at a time. You can come back and add more.`);
+      return;
+    }
+    if (unique.filter((p) => !p.isImage).length > MAX_OTHER_FILES) {
+      setError(`Please send up to ${MAX_OTHER_FILES} files other than photographs at a time.`);
       return;
     }
     setPicked(unique);
@@ -153,9 +228,15 @@ export default function PhotoForm({
     e.preventDefault();
     setError(null);
     if (picked.length === 0) {
-      setError("Please choose at least one photo.");
+      setError("Please choose at least one file.");
       return;
     }
+
+    // Two destinations: Cloudflare Images for anything renderable, R2 for the
+    // rest. Split once here so the ticket request and both upload loops agree
+    // on which file is which.
+    const images = picked.filter((p) => p.isImage);
+    const others = picked.filter((p) => !p.isImage);
 
     setBusy(true);
     setProgress({ done: 0, total: picked.length });
@@ -194,8 +275,15 @@ export default function PhotoForm({
         return;
       }
 
+      // One request for both kinds of upload, because a Turnstile token can only
+      // be validated once — a second verification would need a second challenge
+      // solved halfway through a submission that had already started uploading.
       stage = "tickets";
-      const res = await requestUploads(picked.length, token);
+      const res = await requestUploads(
+        images.length,
+        others.map((p) => ({ name: p.file.name, size: p.file.size })),
+        token,
+      );
       if (!res.ok) {
         setError(res.error);
         resetTurnstile();
@@ -207,75 +295,97 @@ export default function PhotoForm({
       // means something.
       stage = "upload";
       const done: Submission[] = [];
+      const doneFiles: FileSubmission[] = [];
       const failures: string[] = [];
-      for (let i = 0; i < picked.length; i++) {
+      let sent = 0;
+
+      for (let i = 0; i < images.length; i++) {
         const ticket = res.tickets[i];
-        let uploaded: Submission | null = null;
-        let httpFailure: string | null = null;
-        let lastConnectionErr: unknown;
+        const body = new FormData();
+        body.append("file", images[i].file);
 
-        // A dropped connection is usually a one-off blip (weak wifi, a flaky
-        // hop to Cloudflare) rather than a real failure, so retry silently a
-        // couple of times before bothering the visitor with it. An HTTP error
-        // response is deterministic — Cloudflare actively rejected the file —
-        // so that's reported immediately instead of retried.
-        for (let attempt = 1; attempt <= 3 && !uploaded && !httpFailure; attempt++) {
-          const body = new FormData();
-          body.append("file", picked[i].file);
-          try {
-            const up = await fetch(ticket.uploadURL, { method: "POST", body });
-            if (up.ok) {
-              uploaded = {
-                id: ticket.id,
-                handle: ticket.handle,
-                expiresAt: ticket.expiresAt,
-                caption: picked[i].caption,
-                year: picked[i].year,
-                kind: picked[i].kind,
-              };
-            } else {
-              const detail = await up.text().catch(() => "");
-              console.error("Upload rejected:", picked[i].file.name, up.status, detail.slice(0, 300));
-              httpFailure = `${picked[i].file.name} (${up.status})`;
-            }
-          } catch (err) {
-            lastConnectionErr = err;
-            console.warn(`Upload attempt ${attempt} threw for`, picked[i].file.name, err);
-            if (attempt < 3) await new Promise((r) => setTimeout(r, 800 * attempt));
-          }
-        }
-
-        if (uploaded) {
-          done.push(uploaded);
-        } else if (httpFailure) {
-          failures.push(httpFailure);
+        const outcome = await uploadWithRetry(
+          () => fetch(ticket.uploadURL, { method: "POST", body }),
+          images[i].file.name,
+        );
+        if (outcome.ok) {
+          done.push({
+            id: ticket.id,
+            handle: ticket.handle,
+            expiresAt: ticket.expiresAt,
+            caption: images[i].caption,
+            year: images[i].year,
+            kind: images[i].kind,
+          });
         } else {
-          console.error("Upload failed after retries for", picked[i].file.name, lastConnectionErr);
-          failures.push(`${picked[i].file.name} (connection)`);
+          failures.push(
+            outcome.kind === "http" ? outcome.label : `${images[i].file.name} (connection)`,
+          );
         }
-        setProgress({ done: i + 1, total: picked.length });
+        setProgress({ done: ++sent, total: picked.length });
       }
 
-      if (done.length === 0) {
+      // Straight to R2 with a PUT — a presigned URL takes the raw body, not a
+      // multipart form, which is the difference between this and the images above.
+      for (let i = 0; i < others.length; i++) {
+        const ticket = res.fileTickets[i];
+        const outcome = await uploadWithRetry(
+          () => fetch(ticket.uploadURL, { method: "PUT", body: others[i].file }),
+          others[i].file.name,
+        );
+        if (outcome.ok) {
+          doneFiles.push({
+            storageKey: ticket.storageKey,
+            handle: ticket.handle,
+            expiresAt: ticket.expiresAt,
+            filename: others[i].file.name,
+            contentType: others[i].file.type || null,
+            byteSize: others[i].file.size,
+            description: others[i].caption,
+          });
+        } else {
+          failures.push(
+            outcome.kind === "http" ? outcome.label : `${others[i].file.name} (connection)`,
+          );
+        }
+        setProgress({ done: ++sent, total: picked.length });
+      }
+
+      if (done.length === 0 && doneFiles.length === 0) {
         resetTurnstile();
         setError(
-          `Those photos couldn't be sent to our image service${failures.length ? ` — ${failures.join(", ")}` : ""}. Please try again, or email them to contact@joeweisman.org.`,
+          `Those files couldn't be sent${failures.length ? ` — ${failures.join(", ")}` : ""}. Please try again, or email them to contact@joeweisman.org.`,
         );
         return;
       }
       if (failures.length > 0) {
-        console.warn("Some photos failed to upload:", failures);
+        console.warn("Some files failed to upload:", failures);
       }
 
       stage = "record";
 
-      const rec = await recordPhotos(done, name, email);
-      if (!rec.ok) {
-        setError(rec.error ?? "Something went wrong.");
-        resetTurnstile();
-        return;
+      let savedTotal = 0;
+      if (done.length > 0) {
+        const rec = await recordPhotos(done, name, email);
+        if (!rec.ok) {
+          setError(rec.error ?? "Something went wrong.");
+          resetTurnstile();
+          return;
+        }
+        savedTotal += rec.saved;
       }
-      setSaved(rec.saved);
+      if (doneFiles.length > 0) {
+        const rec = await recordArtifactFiles(doneFiles, name, email);
+        if (!rec.ok) {
+          setError(rec.error ?? "Something went wrong.");
+          resetTurnstile();
+          return;
+        }
+        savedTotal += rec.saved;
+      }
+
+      setSaved(savedTotal);
+      setSavedFiles(doneFiles.length);
       setSavedKinds(
         Array.from(new Set(done.map((d) => (d.kind === "artifact" ? "artifact" : "photo")))),
       );
@@ -307,11 +417,24 @@ export default function PhotoForm({
     return (
       <div id="add" className="form-ok-block">
         <p className="form-ok" role="status">
-          Thank you — {saved === 1 ? "your photograph has" : `${saved} photographs have`} been sent.
+          Thank you &mdash; {saved === 1 ? "it has" : `all ${saved} have`} been sent.
         </p>
-        <p className="muted-note">
-          They&rsquo;ll appear in the gallery once someone has had a look at them.
-        </p>
+        {saved > savedFiles && (
+          <p className="muted-note">
+            The pictures will appear in the gallery once someone has had a look at
+            them.
+          </p>
+        )}
+        {/* Say plainly that these don't show up anywhere, so nobody goes looking
+            for a recording in a gallery and concludes it was lost. */}
+        {savedFiles > 0 && (
+          <p className="muted-note">
+            {savedFiles === 1 ? "The other file is" : `The other ${savedFiles} files are`}{" "}
+            kept in the family archive rather than shown on the site. Someone will
+            look at {savedFiles === 1 ? "it" : "them"} and work out the right way to
+            share {savedFiles === 1 ? "it" : "them"}.
+          </p>
+        )}
         <button type="button" className="btn-quiet" onClick={() => setSaved(0)}>
           Send more
         </button>{" "}
@@ -351,12 +474,16 @@ export default function PhotoForm({
 
         <form onSubmit={submit} className="form">
           <div className="field">
-            <label htmlFor="ph-files">Choose photographs</label>
+            <label htmlFor="ph-files">Choose files</label>
+            {/* No accept filter. Anything of his is worth having — a recording,
+                a scan, a letter, the source to something he wrote — and an
+                allowlist would quietly refuse whichever format nobody thought
+                of. Non-pictures go to the private archive, never to a page, so
+                there is nothing to be gained by narrowing what can be sent. */}
             <input
               id="ph-files"
               ref={fileInput}
               type="file"
-              accept={ACCEPT}
               multiple
               disabled={busy}
               onChange={(e) => {
@@ -365,7 +492,10 @@ export default function PhotoForm({
               }}
             />
             <span className="muted-note">
-              Up to {MAX_FILES} at a time, 25 MB each. Photos straight off a phone are fine.
+              Up to {MAX_FILES} photographs at a time, 25 MB each &mdash; straight off
+              a phone is fine. Other kinds of file are welcome too: recordings,
+              scans, letters, documents, up to {MAX_OTHER_FILES} at a time and 100 MB
+              each. Those go into the family archive rather than onto the site.
             </span>
           </div>
 
@@ -388,42 +518,57 @@ export default function PhotoForm({
                       a phone is often a mix, and captions and years are already
                       per file, so this is the same shape. Whatever gets chosen,
                       the admin page can move it afterwards. */}
-                  <fieldset className="kind-choice">
-                    <legend className="picked-caption-label">What is this?</legend>
-                    {(
-                      [
-                        ["photo", "Photograph of Joe"],
-                        ["artifact", "Something he made or owned"],
-                      ] as const
-                    ).map(([value, label]) => (
-                      <label key={value} className="kind-option">
-                        <input
-                          type="radio"
-                          name={`kind-${i}`}
-                          value={value}
-                          checked={p.kind === value}
-                          disabled={busy}
-                          onChange={() =>
-                            setPicked(
-                              picked.map((x) =>
-                                x.key === p.key ? { ...x, kind: value } : x,
-                              ),
-                            )
-                          }
-                        />
-                        <span>{label}</span>
-                      </label>
-                    ))}
-                  </fieldset>
+                  {p.isImage ? (
+                    <fieldset className="kind-choice">
+                      <legend className="picked-caption-label">What is this?</legend>
+                      {(
+                        [
+                          ["photo", "Photograph of Joe"],
+                          ["artifact", "Something he made or owned"],
+                        ] as const
+                      ).map(([value, label]) => (
+                        <label key={value} className="kind-option">
+                          <input
+                            type="radio"
+                            name={`kind-${i}`}
+                            value={value}
+                            checked={p.kind === value}
+                            disabled={busy}
+                            onChange={() =>
+                              setPicked(
+                                picked.map((x) =>
+                                  x.key === p.key ? { ...x, kind: value } : x,
+                                ),
+                              )
+                            }
+                          />
+                          <span>{label}</span>
+                        </label>
+                      ))}
+                    </fieldset>
+                  ) : (
+                    // No gallery could show a recording or a document, so there
+                    // is no choice to offer — only an honest account of where it
+                    // goes, rather than letting someone expect it on the site.
+                    <p className="muted-note">
+                      Not a picture &mdash; this goes into the family archive rather
+                      than a gallery.
+                    </p>
+                  )}
                   <label htmlFor={`cap-${i}`} className="picked-caption-label">
-                    Caption <span className="optional">(optional)</span>
+                    {p.isImage ? "Caption" : "What is it?"}{" "}
+                    <span className="optional">(optional)</span>
                   </label>
                   <input
                     id={`cap-${i}`}
                     type="text"
                     maxLength={500}
                     disabled={busy}
-                    placeholder="Who, where, when — whatever you remember"
+                    placeholder={
+                      p.isImage
+                        ? "Who, where, when — whatever you remember"
+                        : "What it is, and anything we'd need to know to make sense of it"
+                    }
                     value={p.caption}
                     onChange={(e) =>
                       setPicked(picked.map((x) => (x.key === p.key ? { ...x, caption: e.target.value } : x)))
@@ -524,8 +669,8 @@ export default function PhotoForm({
               : busy
                 ? "Sending…"
                 : picked.length > 1
-                  ? `Send ${picked.length} photographs`
-                  : "Send photograph"}
+                  ? `Send ${picked.length} files`
+                  : "Send"}
           </button>
         </form>
       </section>

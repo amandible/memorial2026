@@ -1,4 +1,4 @@
-import { db } from "./db";
+import { db } from "./db.ts";
 
 /**
  * Which gallery a photograph belongs to.
