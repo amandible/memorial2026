@@ -239,7 +239,15 @@ export default function PhotoForm({
     try {
       const { parse } = await exifLite();
       const tags = await parse(file, {
-        pick: ["DateTimeOriginal", "CreateDate"],
+        // Blocks, not `pick`. `pick` resolves tag names through a dictionary the
+        // lite build doesn't ship, so passing it made every call throw — which
+        // the catch below was quietly eating, and the year never appeared.
+        // Checked against all 26 archived originals: these options agree with
+        // the full build's result on every one, including the eight with no
+        // date at all.
+        ifd0: false,
+        exif: true,
+        gps: false,
         // Keep the raw "YYYY:MM:DD hh:mm:ss" string. EXIF carries no timezone,
         // and letting it become a Date then reading it back shifts some
         // photographs into the previous day — occasionally the previous year.
@@ -259,8 +267,11 @@ export default function PhotoForm({
             : p,
         ),
       );
-    } catch {
-      // No readable metadata is the normal case for a scan or a screenshot.
+    } catch (e) {
+      // A file with no metadata resolves to undefined; it does not throw. So a
+      // throw here means the parser itself is unhappy, which is a bug and not
+      // the ordinary case — an empty catch hid exactly that for a whole release.
+      console.warn("Couldn't read a date from", file.name, e);
     }
   }
 
@@ -285,8 +296,10 @@ export default function PhotoForm({
         setPicked((cur) => cur.map((p) => (p.key === key ? { ...p, preview: url } : p)));
         return;
       }
-    } catch {
-      // Falls through to the no-preview placeholder.
+    } catch (e) {
+      // A file with no embedded thumbnail resolves to undefined rather than
+      // throwing, so this is a real fault too, not the ordinary case.
+      console.warn("Couldn't extract an embedded thumbnail from", file.name, e);
     }
     setPicked((cur) => cur.map((p) => (p.key === key ? { ...p, preview: null } : p)));
   }

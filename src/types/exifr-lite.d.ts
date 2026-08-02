@@ -10,10 +10,22 @@
  * on being a compile error rather than silently `any`.
  */
 declare module "exifr/dist/lite.esm.mjs" {
-  /** Read selected tags. Resolves undefined when the file carries no metadata. */
+  /**
+   * Read tags. Resolves undefined when the file carries no metadata.
+   *
+   * Note there is deliberately no `pick` here. It exists in exifr's API, but it
+   * resolves tag names through a dictionary the lite build doesn't ship, so
+   * passing it throws on every file. Leaving it out of this declaration means
+   * reintroducing it is a compile error rather than a silent runtime failure.
+   */
   export function parse(
     input: Blob | ArrayBuffer | Uint8Array,
-    options?: { pick?: string[]; reviveValues?: boolean },
+    options?: {
+      ifd0?: boolean;
+      exif?: boolean;
+      gps?: boolean;
+      reviveValues?: boolean;
+    },
   ): Promise<Record<string, unknown> | undefined>;
 
   /** Object URL for the thumbnail embedded in the file, if it has one. */
