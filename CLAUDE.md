@@ -42,6 +42,7 @@ machine. Never kill a process by name to free a port; find another port.
 | `npm test` | Runs `tests/*.test.mts` on Node's built-in test runner, no test framework dependency |
 | `npm run migrate` | Applies any unapplied numbered `.sql` file in `db/` against Neon |
 | `npm run archive` | Copies any approved photo not yet backed up to R2 |
+| `npm run dimensions` | Fills in pixel size for any photo missing it (`-- --all` re-measures everything) |
 | `npm run archive -- --pull` | Downloads the whole R2 photo archive to `media/archive/` (gitignored) |
 
 Single test file: `node --experimental-strip-types --test tests/turnstile.test.mts`.

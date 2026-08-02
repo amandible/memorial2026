@@ -215,7 +215,25 @@ export type Submission = {
   year?: string;
   /** Which gallery this belongs on. Narrowed server-side; admin can move it. */
   kind?: string;
+  /**
+   * Pixel size, measured by the browser that decoded the file.
+   *
+   * Only ever an admin display stat, which is why taking it from the client is
+   * acceptable here — nothing is decided by it. Bounded below in case it isn't
+   * a plausible number.
+   */
+  width?: number | null;
+  height?: number | null;
 };
+
+/** Nothing sane is bigger than this; anything that is, isn't worth recording. */
+const MAX_DIMENSION = 100_000;
+
+function plausibleDimension(n: unknown): number | null {
+  const v = Number(n);
+  if (!Number.isInteger(v) || v <= 0 || v > MAX_DIMENSION) return null;
+  return v;
+}
 
 /**
  * Step two: record the photos that uploaded successfully.
@@ -250,14 +268,17 @@ export async function recordPhotos(
     }
     try {
       const year = parseYear(s.year);
+      const w = plausibleDimension(s.width);
+      const h = plausibleDimension(s.height);
       await db()`
         insert into photos (submitter, email, caption, storage_ref, status, ip_hash,
-                            taken_year, taken_source, kind)
+                            taken_year, taken_source, kind, width, height)
         values (${name || null}, ${mail || null},
                 ${s.caption.trim().slice(0, MAX_CAPTION) || null},
                 ${s.id}, 'pending', ${ipHash},
                 ${year}, ${year ? "submitter" : null},
-                ${parseKind(s.kind)})
+                ${parseKind(s.kind)},
+                ${w && h ? w : null}, ${w && h ? h : null})
       `;
       saved++;
     } catch (e) {

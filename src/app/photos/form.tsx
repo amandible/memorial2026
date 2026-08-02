@@ -24,8 +24,13 @@ type Picked = {
   isImage: boolean;
   /** Object URL for the preview, or null once the browser has failed to render it. */
   preview: string | null;
+  /** True once the preview is the small EXIF thumbnail rather than the file itself. */
+  previewIsThumb: boolean;
   /** Set when the year came from the file rather than the sender, so it can say so. */
   yearFromFile: boolean;
+  /** Pixel size of the original, for the admin page. Not shown to the sender. */
+  width: number | null;
+  height: number | null;
   key: string;
 };
 
@@ -199,7 +204,10 @@ export default function PhotoForm({
         kind: isImageFile(f) ? defaultKind : ("artifact" as Kind),
         isImage: isImageFile(f),
         preview: null,
+        previewIsThumb: false,
         yearFromFile: false,
+        width: null,
+        height: null,
         key: `${f.name}-${f.size}-${f.lastModified}`,
       })),
     ];
@@ -255,17 +263,28 @@ export default function PhotoForm({
       });
       const raw = String(tags?.DateTimeOriginal ?? tags?.CreateDate ?? "");
       const year = parseYear(raw.match(/^(\d{4})/)?.[1]);
-      if (!year) return;
+
+      // EXIF dimensions are the fallback only. They describe what the camera
+      // captured, so they go stale the moment anything is cropped — two of the
+      // 29 archived originals disagree with their own file header for exactly
+      // that reason. What the browser decoded wins, and is set below.
+      const ew = Number(tags?.ExifImageWidth ?? tags?.ImageWidth ?? 0) || null;
+      const eh = Number(tags?.ExifImageHeight ?? tags?.ImageHeight ?? 0) || null;
+
+      if (!year && !(ew && eh)) return;
 
       setPicked((cur) =>
-        cur.map((p) =>
-          // Never overwrite something typed. A sender who has entered a year
-          // knows more than the file does — a phone photograph of a 1975 print
-          // is stamped with today's date and every automated check passes.
-          p.key === key && !p.year
-            ? { ...p, year: String(year), yearFromFile: true }
-            : p,
-        ),
+        cur.map((p) => {
+          if (p.key !== key) return p;
+          return {
+            ...p,
+            // Never overwrite something typed. A sender who has entered a year
+            // knows more than the file does — a phone photograph of a 1975 print
+            // is stamped with today's date and every automated check passes.
+            ...(year && !p.year ? { year: String(year), yearFromFile: true } : {}),
+            ...(ew && eh && !p.width ? { width: ew, height: eh } : {}),
+          };
+        }),
       );
     } catch (e) {
       // A file with no metadata resolves to undefined; it does not throw. So a
@@ -293,7 +312,9 @@ export default function PhotoForm({
       const url = await thumbnailUrl(file);
       if (url) {
         objectUrls.current.add(url);
-        setPicked((cur) => cur.map((p) => (p.key === key ? { ...p, preview: url } : p)));
+        setPicked((cur) =>
+          cur.map((p) => (p.key === key ? { ...p, preview: url, previewIsThumb: true } : p)),
+        );
         return;
       }
     } catch (e) {
@@ -446,6 +467,8 @@ export default function PhotoForm({
             caption: images[i].caption,
             year: images[i].year,
             kind: images[i].kind,
+            width: images[i].width,
+            height: images[i].height,
           });
         } else {
           failures.push(
@@ -644,6 +667,21 @@ export default function PhotoForm({
                           src={p.preview}
                           alt=""
                           onError={() => void onPreviewError(p.key, p.file, p.preview)}
+                          /* What the browser decoded is the true size of the
+                             file, so it overrides anything EXIF claimed. Only
+                             recorded for the full-size preview — the embedded
+                             EXIF thumbnail is a different, tiny image. */
+                          onLoad={(e) => {
+                            const el = e.currentTarget;
+                            if (!el.naturalWidth || p.previewIsThumb) return;
+                            setPicked((cur) =>
+                              cur.map((x) =>
+                                x.key === p.key
+                                  ? { ...x, width: el.naturalWidth, height: el.naturalHeight }
+                                  : x,
+                              ),
+                            );
+                          }}
                         />
                       ) : (
                         <span className="picked-thumb-none">no preview</span>

@@ -311,6 +311,7 @@ submission, however many pictures it contained.
 | **Guestbook** | Entries publish **immediately**. That is deliberate — a tribute that vanishes on submit reads as broken to the person who wrote it. *Hide* removes it from the public page; the row survives and *Restore* brings it back. |
 | **Photos** | Held as `pending` and invisible until you *Approve*. *Reject* hides it reversibly. *Delete for good* appears only on already-rejected photos and also removes the file from Cloudflare — the one irreversible action here. |
 | **Photographs vs. artifacts** | Every picture is one or the other, and shows on `/photos` or `/artifacts` accordingly. Submitters choose, and get it wrong both ways — *Move to artifacts* / *Move to photographs* fixes it in one click. |
+| **Resolution** | Shown under each photograph, admin-only. Flagged *small for print* under 2 MP and *very small* under 0.4 MP — a 5×7 at 300dpi wants about 3 MP, so anything flagged will disappoint if it's enlarged for the service. *size unknown* means it predates this and `npm run dimensions` hasn't been run. |
 | **Archive files** | Submissions that aren't pictures: recordings, scans, documents. **These appear nowhere on the site** and nothing links to them. Download one to see what it is, then *Keep* or *Not wanted*. What to do with them after that is a hand decision, like the recipes. |
 | **Email list** | The count is on the dashboard. Export and send by hand from Gmail, BCC (see below). |
 

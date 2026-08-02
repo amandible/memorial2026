@@ -22,6 +22,36 @@ export const metadata: Metadata = {
 
 export const dynamic = "force-dynamic";
 
+/**
+ * Pixel size, with a word about it when it's small enough to matter.
+ *
+ * Two jobs: confirming at a glance that a photograph arrived whole, and finding
+ * the ones that won't survive being printed or projected at the service. The
+ * thresholds are about print — a 5×7 at 300dpi wants about 3 MP, so 2 MP is
+ * already tight and half a megapixel is screen-only.
+ */
+function describeResolution(width: number | null, height: number | null) {
+  if (!width || !height) {
+    // Not a fault: everything submitted before this was recorded reads as
+    // unknown until `npm run dimensions` has been over it.
+    return <span className="mod-year-source">size unknown</span>;
+  }
+
+  const megapixels = (width * height) / 1_000_000;
+  const note =
+    megapixels < 0.4 ? "very small" : megapixels < 2 ? "small for print" : null;
+
+  return (
+    <>
+      <span className="res">
+        {width} &times; {height}
+      </span>{" "}
+      <span className="mod-year-source">{megapixels.toFixed(1)} MP</span>
+      {note && <span className="tag tag-attention">{note}</span>}
+    </>
+  );
+}
+
 type Row = {
   id: string;
   name: string;
@@ -67,12 +97,14 @@ export default async function AdminPage() {
     photos_unarchived: number;
   }[];
 
-  // Pending first and oldest first, so nothing waits unnoticed.
+  // Pending first, so nothing waits unnoticed — but newest first within each
+  // group, matching the public gallery. Oldest-first buried a photograph that
+  // had just arrived at the bottom of a long page.
   const photos = (await db()`
     select id, storage_ref, caption, submitter, email, status, created_at, archived_at,
-           taken_year, taken_source, exif_taken_at, kind
+           taken_year, taken_source, exif_taken_at, kind, width, height
     from photos
-    order by (status = 'pending') desc, created_at
+    order by (status = 'pending') desc, created_at desc
     limit 200
   `) as {
     id: string;
@@ -87,6 +119,8 @@ export default async function AdminPage() {
     taken_source: string | null;
     exif_taken_at: Date | null;
     kind: string;
+    width: number | null;
+    height: number | null;
   }[];
 
   // A failure here shouldn't cost the whole admin page — photos and the
@@ -178,6 +212,7 @@ export default async function AdminPage() {
                   {p.submitter ?? "anonymous"}
                   {p.email && <> &middot; {p.email}</>}
                 </span>
+                <span className="mod-meta">{describeResolution(p.width, p.height)}</span>
               </figcaption>
               <PhotoActions id={p.id} status={p.status} />
             </figure>

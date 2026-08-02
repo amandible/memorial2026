@@ -449,6 +449,10 @@ body {
 .tag-pending { color: var(--todo); }
 .tag-approved { color: var(--muted); }
 .tag-rejected { color: var(--muted); }
+.tag-attention { color: var(--todo); }
+/* Lining numerals here, against the site's oldstyle default: these are read as
+   a measurement rather than as running text, and they line up down the grid. */
+.res { font-variant-numeric: tabular-nums lining-nums; }
 .stat-attention dd { color: var(--todo); }
 
 .export { display: flex; flex-direction: column; align-items: flex-start;
