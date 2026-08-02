@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { bodySerif, displaySerif, mono } from "./fonts";
 import Nav from "./nav";
+import Footer from "./footer";
 import "./tokens.css";
 
 const SITE_NAME = "Joe Weisman";
@@ -64,6 +65,7 @@ export default function RootLayout({
         <a href="#main" className="skip">Skip to content</a>
         <Nav />
         {children}
+        <Footer />
       </body>
     </html>
   );

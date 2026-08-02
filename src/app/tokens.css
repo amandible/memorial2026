@@ -144,6 +144,14 @@ body {
 /* The current section reads as a label, not a link to where you already are. */
 .sitenav [aria-current="page"] { color: var(--muted); }
 
+.sitefoot {
+  border-top: 1px solid var(--rule);
+  padding: var(--s3) 1.35rem;
+  text-align: center;
+}
+.sitefoot a { color: var(--muted); font-size: var(--size-small); text-decoration: none; }
+.sitefoot a:hover, .sitefoot a:focus-visible { text-decoration: underline; }
+
 .wordmark {
   font-family: var(--display);
   font-size: 1.35rem;
