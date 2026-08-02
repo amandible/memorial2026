@@ -66,7 +66,10 @@ body {
 .page {
   max-width: var(--measure);
   margin-inline: auto;
-  padding: clamp(2.25rem, 6vw, 4.5rem) 1.35rem var(--s6);
+  /* The nav already has its own padding and a rule under it, so the old
+     4.5rem here stacked with the title's own margin into ~104px of empty
+     space above every heading. */
+  padding: clamp(1.5rem, 3vw, 2.5rem) 1.35rem var(--s6);
 }
 
 /* Hero plate matches the text measure exactly. The portrait is square and already
@@ -103,7 +106,7 @@ body {
   text-wrap: balance;
 }
 
-.rule { border: 0; border-top: 1px solid var(--rule); width: 5rem; margin: 2.75rem auto 2.5rem; }
+.rule { border: 0; border-top: 1px solid var(--rule); width: 5rem; margin: 1.75rem auto 1.85rem; }
 
 .prose p { margin: 0 0 1.45em; text-wrap: pretty; }
 .prose p:last-child { margin-bottom: 0; }
@@ -174,7 +177,8 @@ body {
   font-size: clamp(2rem, 6vw, 2.6rem);
   line-height: var(--leading-tight);
   text-align: center;
-  margin: var(--s4) 0 0;
+  /* No top margin — .page's padding is the space above the title. */
+  margin: 0;
   text-wrap: balance;
 }
 /* ---- Forms ----
@@ -367,6 +371,23 @@ body {
 /* Photo submission form */
 .picked { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--s3); }
 .picked li { border: 1px solid var(--rule); border-radius: 2px; padding: var(--s2); }
+/* Thumbnail beside the fields rather than above them, so the picture and its
+   caption box are on one line of sight. Stacks under 30rem, where side-by-side
+   would leave the inputs too narrow to type a caption into. */
+.picked-item { display: flex; gap: var(--s2); align-items: flex-start; }
+.picked-body { flex: 1; min-width: 0; }
+.picked-thumb {
+  flex: none; width: 84px; height: 84px; border: 1px solid var(--rule); border-radius: 2px;
+  background: var(--bg-sunk); display: flex; align-items: center; justify-content: center;
+  overflow: hidden;
+}
+.picked-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.picked-thumb-none { color: var(--muted); font-size: .75rem; text-align: center; padding: .2rem; }
+.year-row { display: flex; flex-wrap: wrap; align-items: baseline; gap: .5rem; }
+@media (max-width: 30rem) {
+  .picked-item { flex-direction: column; }
+  .picked-thumb { width: 100%; height: 140px; }
+}
 .picked-head { display: flex; align-items: center; justify-content: space-between; gap: var(--s2); margin-bottom: .5rem; }
 .picked-name { font-family: var(--mono); font-size: .85rem; overflow-wrap: anywhere; }
 .picked-caption-label { display: block; font-size: var(--size-small); margin-bottom: .3rem; }
@@ -377,15 +398,16 @@ body {
 }
 .field input[type="file"] { font-family: var(--body); font-size: var(--size-small); padding: .6rem 0; }
 
-/* The motto he cut into the harpsichord he built. Set in the display face and
-   left unquoted — the attribution below already says it is his, and quote marks
-   would make it look borrowed from someone else. */
-.epigraph { margin: 0 0 var(--s4); max-width: var(--measure); }
+/* The motto from the harpsichord he built, sitting under the page title as a
+   subtitle rather than as a block of its own — as its own block it read as a
+   second thing to get past before the pictures. Left unquoted: the attribution
+   already says it is his, and quote marks would make it look borrowed. */
+.epigraph { margin: .7rem 0 0; text-align: center; }
 .epigraph p {
-  font-family: var(--display); font-size: 1.4rem; line-height: var(--leading-tight);
-  font-style: italic; margin: 0 0 .4rem;
+  font-family: var(--display); font-size: 1.15rem; line-height: var(--leading-tight);
+  font-style: italic; margin: 0; color: var(--text);
 }
-.epigraph cite { display: block; font-style: normal; font-size: var(--size-small); color: var(--muted); }
+.epigraph cite { display: block; font-style: normal; font-size: .9rem; color: var(--muted); margin-top: .25rem; }
 
 /* Photograph-or-artifact, per picked file. A fieldset for the grouping the
    screen reader needs, stripped of the browser's default border and inset. */

@@ -24,18 +24,17 @@ export default async function ArtifactsPage() {
   return (
     <main className="page page-photos" id="main">
       <h1 className="page-title">{ARTIFACTS_LABEL}</h1>
-      <hr className="rule" />
-
+      {/* Part of the title, above the rule — as its own block below it, this
+          was one more thing to read before reaching the pictures. */}
       <blockquote className="epigraph">
         <p>Work for beauty as for bread.</p>
-        <cite>The motto on the harpsichord he built</cite>
+        <cite>the motto on the harpsichord he built</cite>
       </blockquote>
+      <hr className="rule" />
 
       <p className="prose">
-        Things Joe made, marked, or kept. He built a sauna wherever he lived, and
-        left behind fish ponds, shelving units, and improved kitchens. He
-        annotated his recipes, sharpened other people&rsquo;s knives, folded
-        origami dollar bills, and wrote in a block-print hand that was
+        Things Joe made, marked, or kept &mdash; the saunas and fish ponds and
+        improved kitchens, the annotated recipes, the block-print hand that was
         unmistakably his.
       </p>
 

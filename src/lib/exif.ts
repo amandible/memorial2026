@@ -60,11 +60,6 @@ export async function readExifDate(bytes: ArrayBuffer | Uint8Array): Promise<Exi
   };
 }
 
-/** Validate a year typed by a person. Returns null rather than throwing. */
-export function parseYear(input: unknown): number | null {
-  const n = Number.parseInt(String(input ?? "").trim(), 10);
-  if (!Number.isFinite(n)) return null;
-  // Joe was born in 1944, so a photograph of him cannot predate that.
-  if (n < 1944 || n > new Date().getFullYear()) return null;
-  return n;
-}
+// Lives in year.ts so the browser can use it without pulling in exifr; re-exported
+// here because every server-side caller already imports it from this module.
+export { parseYear } from "./year.ts";

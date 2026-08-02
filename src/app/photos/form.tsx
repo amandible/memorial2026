@@ -11,6 +11,7 @@ import {
   type FileSubmission,
 } from "./actions";
 import { ARTIFACTS_LABEL } from "@/lib/sections";
+import { parseYear } from "@/lib/year";
 
 type Kind = "photo" | "artifact";
 
@@ -21,6 +22,10 @@ type Picked = {
   kind: Kind;
   /** Pictures go to Cloudflare Images; everything else goes to the R2 archive. */
   isImage: boolean;
+  /** Object URL for the preview, or null once the browser has failed to render it. */
+  preview: string | null;
+  /** Set when the year came from the file rather than the sender, so it can say so. */
+  yearFromFile: boolean;
   key: string;
 };
 
@@ -39,6 +44,23 @@ const IMAGE_EXT = /\.(jpe?g|png|heic|heif|webp|tiff?|gif|avif|bmp)$/i;
 
 function isImageFile(f: File): boolean {
   return f.type.startsWith("image/") || (f.type === "" && IMAGE_EXT.test(f.name));
+}
+
+/**
+ * Load the EXIF parser only once someone has actually picked a photograph.
+ *
+ * The lite build rather than the full one: 44 KB against 74 KB, and it still
+ * reads HEIC, which is the format most of these arrive in. Statically importing
+ * src/lib/exif.ts here would put the parser in the bundle for every visitor who
+ * merely opens the page, most of whom never choose a file.
+ */
+async function exifLite() {
+  return (await import(
+    /* webpackChunkName: "exifr-lite" */ "exifr/dist/lite.esm.mjs"
+  )) as {
+    parse: (f: Blob, opts?: unknown) => Promise<Record<string, unknown> | undefined>;
+    thumbnailUrl: (f: Blob) => Promise<string | undefined>;
+  };
 }
 
 type UploadOutcome =
@@ -99,6 +121,16 @@ export default function PhotoForm({
   const [tsStatus, setTsStatus] = useState<"loading" | "ready" | "error">("loading");
   const fileInput = useRef<HTMLInputElement>(null);
   const turnstileBox = useRef<HTMLDivElement>(null);
+  /** Every object URL handed out, so none leaks when the page goes away. */
+  const objectUrls = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    const urls = objectUrls.current;
+    return () => {
+      for (const u of urls) URL.revokeObjectURL(u);
+      urls.clear();
+    };
+  }, []);
 
   useEffect(() => {
     if (!siteKey) return;
@@ -166,6 +198,8 @@ export default function PhotoForm({
         // gallery it could go to — so the toggle isn't offered for those.
         kind: isImageFile(f) ? defaultKind : ("artifact" as Kind),
         isImage: isImageFile(f),
+        preview: null,
+        yearFromFile: false,
         key: `${f.name}-${f.size}-${f.lastModified}`,
       })),
     ];
@@ -180,6 +214,89 @@ export default function PhotoForm({
       return;
     }
     setPicked(unique);
+
+    // Previews and dates are a nicety — never let one throw into the pick.
+    for (const p of unique) {
+      if (p.isImage && p.preview === null) void preparePreview(p.key, p.file);
+    }
+  }
+
+  /**
+   * Give each picked photograph a thumbnail and, where the file knows, a year.
+   *
+   * Without this the form is a list of filenames, and with five photographs
+   * there is no way to tell which caption box belongs to which picture.
+   *
+   * Updates go through the functional form of setPicked and match on key: these
+   * land out of order, after further picks and removals, and indexes will have
+   * moved by then.
+   */
+  async function preparePreview(key: string, file: File) {
+    const url = URL.createObjectURL(file);
+    objectUrls.current.add(url);
+    setPicked((cur) => cur.map((p) => (p.key === key ? { ...p, preview: url } : p)));
+
+    try {
+      const { parse } = await exifLite();
+      const tags = await parse(file, {
+        pick: ["DateTimeOriginal", "CreateDate"],
+        // Keep the raw "YYYY:MM:DD hh:mm:ss" string. EXIF carries no timezone,
+        // and letting it become a Date then reading it back shifts some
+        // photographs into the previous day — occasionally the previous year.
+        reviveValues: false,
+      });
+      const raw = String(tags?.DateTimeOriginal ?? tags?.CreateDate ?? "");
+      const year = parseYear(raw.match(/^(\d{4})/)?.[1]);
+      if (!year) return;
+
+      setPicked((cur) =>
+        cur.map((p) =>
+          // Never overwrite something typed. A sender who has entered a year
+          // knows more than the file does — a phone photograph of a 1975 print
+          // is stamped with today's date and every automated check passes.
+          p.key === key && !p.year
+            ? { ...p, year: String(year), yearFromFile: true }
+            : p,
+        ),
+      );
+    } catch {
+      // No readable metadata is the normal case for a scan or a screenshot.
+    }
+  }
+
+  /**
+   * Fall back to the thumbnail embedded in the file's own metadata.
+   *
+   * HEIC is the common case: Safari renders it, Chrome and Firefox don't, so an
+   * iPhone photograph previews on the phone it came from and shows a broken
+   * image on a laptop. The EXIF thumbnail is an ordinary JPEG that every browser
+   * can draw.
+   */
+  async function onPreviewError(key: string, file: File, failedUrl: string | null) {
+    if (failedUrl) {
+      URL.revokeObjectURL(failedUrl);
+      objectUrls.current.delete(failedUrl);
+    }
+    try {
+      const { thumbnailUrl } = await exifLite();
+      const url = await thumbnailUrl(file);
+      if (url) {
+        objectUrls.current.add(url);
+        setPicked((cur) => cur.map((p) => (p.key === key ? { ...p, preview: url } : p)));
+        return;
+      }
+    } catch {
+      // Falls through to the no-preview placeholder.
+    }
+    setPicked((cur) => cur.map((p) => (p.key === key ? { ...p, preview: null } : p)));
+  }
+
+  function forget(p: Picked) {
+    if (p.preview) {
+      URL.revokeObjectURL(p.preview);
+      objectUrls.current.delete(p.preview);
+    }
+    setPicked((cur) => cur.filter((x) => x.key !== p.key));
   }
 
   function resetTurnstile() {
@@ -502,14 +619,32 @@ export default function PhotoForm({
           {picked.length > 0 && (
             <ol className="picked">
               {picked.map((p, i) => (
-                <li key={p.key}>
+                <li key={p.key} className="picked-item">
+                  {/* The thumbnail is why this list is usable: five filenames
+                      give no way to tell which caption box belongs to which
+                      photograph. */}
+                  {p.isImage && (
+                    <div className="picked-thumb" aria-hidden="true">
+                      {p.preview ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={p.preview}
+                          alt=""
+                          onError={() => void onPreviewError(p.key, p.file, p.preview)}
+                        />
+                      ) : (
+                        <span className="picked-thumb-none">no preview</span>
+                      )}
+                    </div>
+                  )}
+                  <div className="picked-body">
                   <div className="picked-head">
                     <span className="picked-name">{p.file.name}</span>
                     <button
                       type="button"
                       className="btn-quiet"
                       disabled={busy}
-                      onClick={() => setPicked(picked.filter((x) => x.key !== p.key))}
+                      onClick={() => forget(p)}
                     >
                       Remove
                     </button>
@@ -574,28 +709,53 @@ export default function PhotoForm({
                       setPicked(picked.map((x) => (x.key === p.key ? { ...x, caption: e.target.value } : x)))
                     }
                   />
-                  <label htmlFor={`yr-${i}`} className="picked-caption-label">
-                    Year taken <span className="optional">(optional)</span>
-                  </label>
-                  <input
-                    id={`yr-${i}`}
-                    type="text"
-                    inputMode="numeric"
-                    maxLength={4}
-                    className="year-input"
-                    disabled={busy}
-                    placeholder="e.g. 1978"
-                    value={p.year}
-                    onChange={(e) =>
-                      setPicked(
-                        picked.map((x) =>
-                          x.key === p.key
-                            ? { ...x, year: e.target.value.replace(/[^0-9]/g, "").slice(0, 4) }
-                            : x,
-                        ),
-                      )
-                    }
-                  />
+                  {/* Only photographs carry a year — artifact_files has no such
+                      column, and "year taken" means little for a document. */}
+                  {p.isImage && (
+                    <>
+                      <label htmlFor={`yr-${i}`} className="picked-caption-label">
+                        Year taken <span className="optional">(optional)</span>
+                      </label>
+                      <span className="year-row">
+                        <input
+                          id={`yr-${i}`}
+                          type="text"
+                          inputMode="numeric"
+                          maxLength={4}
+                          className="year-input"
+                          disabled={busy}
+                          placeholder="e.g. 1978"
+                          value={p.year}
+                          onChange={(e) =>
+                            setPicked(
+                              picked.map((x) =>
+                                x.key === p.key
+                                  ? {
+                                      ...x,
+                                      year: e.target.value.replace(/[^0-9]/g, "").slice(0, 4),
+                                      // Once it's been edited it is the sender's
+                                      // answer, not the file's.
+                                      yearFromFile: false,
+                                    }
+                                  : x,
+                              ),
+                            )
+                          }
+                        />
+                        {/* Say where it came from, and that it can be wrong. A
+                            phone photograph of an old print is stamped with
+                            today's date, which is exactly what a memorial
+                            attracts — the sender is the only one who can tell. */}
+                        {p.yearFromFile && (
+                          <span className="muted-note">
+                            from the file &mdash; please correct it if the photograph
+                            is older than that
+                          </span>
+                        )}
+                      </span>
+                    </>
+                  )}
+                  </div>
                 </li>
               ))}
             </ol>
