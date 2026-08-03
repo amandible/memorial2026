@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getRecipe, getRecipes } from "@/lib/recipes";
 
-// All 71 are known at build time, so every recipe is a static page.
+// Every recipe is known at build time, so each one is a static page.
 export function generateStaticParams() {
   return getRecipes().map((r) => ({ slug: r.slug }));
 }
