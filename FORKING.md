@@ -14,8 +14,13 @@ and deploying what you have copied, one step at a time, checking in after each o
 ## What you'll end up with
 
 A site with an obituary, a service-details page, a photo gallery with public
-submissions and admin moderation, a guestbook, and a mailing-list signup.
-`content/recipes/` is optional — skip it if it doesn't apply.
+submissions and admin moderation, a second gallery for things the person made
+or owned, a guestbook, and a mailing-list signup. Visitors can also send files
+that aren't photographs — a recording, a scan, a letter — which go to a private
+archive only you can see, never onto the site.
+
+`content/recipes/` and the artifacts gallery are both optional — skip either if
+it doesn't apply.
 
 Running cost is about **$5/month plus a domain name** (`README.md` → "The
 services" has the exact breakdown). It's built to need no ongoing technical
@@ -56,7 +61,20 @@ asking over guessing when something below is ambiguous for their situation.
    Vercel, Neon (Postgres), Cloudflare (domain, Turnstile, Images), and
    optionally Resend. `.env.example` lists every variable needed.
 
-3. **Personalize the content.** Everything below is safe to change and has
+3. **Create the database tables** — run `npm run migrate` once, with
+   `DATABASE_URL` set in your `.env.local`.
+
+   > Nothing does this for you. It is not part of the build and Vercel does
+   > not run it on deploy. Skip it and the site still deploys and the home
+   > page still loads — but the gallery, the guestbook, the signup form and
+   > `/admin` will all fail, because the tables they read do not exist yet.
+   > This is the most likely way to get stuck, and it looks like a broken
+   > site rather than a missing step.
+
+   Safe to re-run at any time: each file in `db/` is applied once and
+   skipped thereafter. Run it again whenever you pull new changes.
+
+4. **Personalize the content.** Everything below is safe to change and has
    no effect on the invariants in `AGENTS.md`:
    - `src/app/layout.tsx` — `SITE_NAME` and `DESCRIPTION` (used in the page
      title and social-share previews).
@@ -69,14 +87,24 @@ asking over guessing when something below is ambiguous for their situation.
    - `src/app/tokens.css` — colors, if you want a different palette. Check
      contrast in both light and dark mode before committing to one — see the
      note in `AGENTS.md`.
+   - `content/how-to-make-this.md` — this page is about *us* making this for
+     Joe. Rewrite it or drop it, along with its link in `src/app/footer.tsx`.
    - `content/recipes/` — remove this section and its nav entry
-     (`src/lib/sections.ts`) entirely if it doesn't apply to your person.
+     (`src/lib/sections.ts`) entirely if it doesn't apply to your person. The
+     same goes for the artifacts gallery (`src/app/artifacts/`), which is for
+     things the person made or owned.
 
-4. **Set the two required environment variables** in Vercel (`ADMIN_PASSWORD`,
+5. **Set the two required environment variables** in Vercel (`ADMIN_PASSWORD`,
    `IP_HASH_SALT`) — see `README.md` for what each does and why redeploying
    after setting them matters.
 
-5. **Test the golden path before sharing the link**: submit a guestbook
+6. **If you want people to be able to send files that aren't photographs**
+   (recordings, scans, documents), add a CORS policy to your R2 bucket —
+   `README.md` → "CORS on the R2 bucket" has the exact JSON. Photograph
+   uploads do not need this; those go to Cloudflare Images. Without it, a
+   non-photo upload fails with a connection error.
+
+7. **Test the golden path before sharing the link**: submit a guestbook
    entry, upload a photo, approve it from `/admin`, and sign up for the
    mailing list yourself.
 

@@ -55,8 +55,16 @@ Then:
 
 ```bash
 npm install
+npm run migrate             # first time only, and after pulling new db/ files
 npm run dev -- -p 3117      # http://localhost:3117
 ```
+
+`npm run migrate` creates the tables. Nothing runs it for you — it is not part of
+`npm run build` and Vercel does not run it on deploy, so a fresh database has no
+tables until you do. The site still starts without it and the home page still
+renders, but the gallery, guestbook, signup and `/admin` all fail, which reads as
+a broken site rather than a missing step. It is safe to re-run: each file in
+`db/` is applied once and skipped afterwards.
 
 Port 3117 rather than the default 3000, because Grafana is usually on 3000 on the
 development machine. Any free port works.
@@ -71,6 +79,7 @@ development machine. Any free port works.
 | `npm run migrate` | Apply any unapplied `.sql` file in `db/` |
 | `npm run archive` | Copy any approved photo not yet backed up to R2 |
 | `npm run archive -- --pull` | Download the whole archive to `media/archive/` |
+| `npm run dimensions` | Fill in pixel size for any photo missing it (`-- --all` re-measures) |
 
 The tests cover the parts where a mistake is expensive and silent: that a rejected
 Turnstile token is refused even under the lenient outage policy, that an unset
