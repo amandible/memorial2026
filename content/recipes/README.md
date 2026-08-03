@@ -18,12 +18,31 @@ code change needed.
 Titles are *not* used for URLs. Three of them collide, and the filenames don't —
 so the URL is the filename, which also keeps his own naming visible.
 
-## Four files are text despite their extensions
+## Three files are text despite their extensions
 
-`Kirara2menu.pdf`, `MOROCCAN CARROT SALAD.doc`, `crabcakes.rtf` and `weights.rtf`
-were genuinely those formats. Their text was extracted once and written back under
-the original names, so provenance and URLs stay stable. The rest are byte-for-byte
-copies of his files.
+`MOROCCAN CARROT SALAD.doc`, `crabcakes.rtf` and `weights.rtf` were genuinely
+those formats. Their text was extracted once and written back under the original
+names, so provenance and URLs stay stable. The rest are byte-for-byte copies of
+his files.
+
+## What was removed, and why
+
+Six files came over in the original copy that aren't recipes, or are duplicates
+of one. Removed deliberately, so nobody restores them thinking it was an
+accident:
+
+- `curmudg.map` — driving directions to a private house in Napa.
+- `Kirara2menu.pdf` — a restaurant's takeout order form, checkboxes and prices.
+- `mangoleather` — one line naming a product and where to buy it.
+- `cookie` — the Neiman-Marcus recipe printed twice in one file. The single copy
+  lives in `cookie.nieman_marcus`.
+- `food.doc` — three recipes concatenated, all three already present as
+  `chicbroc.fud`, `dutchbaby` and `lemonpie.frz`.
+- `roastcrn` — an ingredient list with no method, duplicating `cornrost.sld`,
+  which has the source and the instructions.
+
+`butter` is cannabis butter and stays, as written. It is a real lab notebook and
+it is unmistakably him.
 
 ## Adding a recipe
 

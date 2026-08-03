@@ -2,10 +2,10 @@
 
 A memorial site for Joe Weisman (December 16, 1944 – July 10, 2026).
 
-Obituary, service details, a photo gallery with public submissions, a guestbook,
-seventy-one of his own recipes, and a way to collect email addresses. Built to be
-cheap, boring, and durable — it should still be standing in ten years with nobody
-tending it.
+Obituary, service details, a photo gallery with public submissions, a second
+gallery for things he made or owned, a guestbook, his own recipes, and a way to
+collect email addresses. Built to be cheap, boring, and durable — it should still
+be standing in ten years with nobody tending it.
 
 `PLAN.md` is the design document: what was chosen, what was rejected, and why.
 Read it before making a structural change. This file is how to run and deploy the thing.

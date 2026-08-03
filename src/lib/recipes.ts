@@ -5,7 +5,7 @@ import { join } from "node:path";
  * Joe's recipes, read from the original files in content/recipes/.
  *
  * These are the actual text files off his machine, copied in verbatim — the
- * four that were RTF, DOC or PDF were converted once and keep their original
+ * three that were RTF or DOC were converted once and keep their original
  * names so the provenance stays visible. Titles live in _titles.json, derived
  * once by the script that built his cookbook and editable by hand since some
  * are only the filename tidied up.

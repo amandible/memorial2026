@@ -2,11 +2,15 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { getRecipes } from "@/lib/recipes";
 
-export const metadata: Metadata = {
-  title: "Recipes",
-  description:
-    "Seventy-one recipes from Joe Weisman's own files, kept as he typed them.",
-};
+// Counted rather than written down. The hardcoded "Seventy-one" here outlived
+// the seventy-one files, and a share preview claiming a number the page
+// contradicts is worse than one that doesn't give a number at all.
+export function generateMetadata(): Metadata {
+  return {
+    title: "Recipes",
+    description: `${getRecipes().length} recipes from Joe Weisman's own files, kept as he typed them.`,
+  };
+}
 
 export default function RecipesPage() {
   const recipes = getRecipes();
