@@ -79,6 +79,36 @@ async function exifLite() {
   };
 }
 
+/**
+ * Tell the server a submission failed in the browser.
+ *
+ * Everything that has gone wrong with this form went wrong on someone else's
+ * machine, where nothing we can read reaches. Vercel's free tier keeps runtime
+ * logs for an hour, so even the server half is gone by the time anyone reports
+ * it. Best effort and deliberately silent: this must never be the reason a
+ * submission fails.
+ *
+ * Note what this cannot see. It is JavaScript, so it only reports failures in a
+ * page that is running ours — if hydration never completes, nothing here fires,
+ * and that is one of the shapes currently under suspicion.
+ */
+async function reportClientFailure(info: {
+  stage: string;
+  detail: string;
+  files: number;
+}): Promise<void> {
+  try {
+    await fetch("/api/upload-trouble", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(info),
+      keepalive: true,
+    });
+  } catch {
+    // Reporting a failure must not create one.
+  }
+}
+
 type UploadOutcome =
   | { ok: true }
   | { ok: false; kind: "http"; label: string }
@@ -449,6 +479,16 @@ export default function PhotoForm({
             ? "We couldn't load the security check — this usually means an ad blocker or privacy extension is active. Try turning it off for this site and reloading, or email the photos to contact@joeweisman.org instead. Your photos and captions are still here."
             : "Please complete the verification below, then press Send again. Your photos and captions are still here.",
         );
+        void reportClientFailure({
+          stage: "verify",
+          // Whether the script global ever appeared is the one thing that
+          // separates "blocked outright" from "loaded but produced nothing",
+          // and those have completely different causes.
+          detail: `turnstile:${tsStatus}:script=${
+            typeof (window as { turnstile?: unknown }).turnstile !== "undefined"
+          }`,
+          files: picked.length,
+        });
         return;
       }
 
@@ -584,6 +624,7 @@ export default function PhotoForm({
         `Something went wrong ${where}. Please try again, or email them to contact@joeweisman.org.` +
           (process.env.NODE_ENV === "development" ? ` [${detail}]` : ""),
       );
+      void reportClientFailure({ stage, detail: detail.slice(0, 200), files: picked.length });
       resetTurnstile();
     } finally {
       setBusy(false);
