@@ -183,9 +183,29 @@ Choices worth knowing before you fight them:
 | Admin notifications | Resend | Live, from `notifications.joeweisman.org` |
 | Uptime alerts | UptimeRobot | Live, free tier. Two monitors — see below |
 | Photo archive | Cloudflare R2 | Live, free tier. Bucket `joeweisman-photos`, private |
+| Visitor counts | Cloudflare Web Analytics | Free. Off unless `NEXT_PUBLIC_CF_ANALYTICS_TOKEN` is set |
 
 Running cost is about **$5/month plus the domain**: everything is on a free tier except
 Cloudflare Images.
+
+### Visitor counts
+
+Cloudflare Web Analytics, chosen over Vercel's for two reasons: Vercel's Hobby tier keeps
+only **one month** of history, so next year you could not answer "how many people came
+around the service", and Cloudflare's beacon [stores no cookie, no localStorage and no IP
+address](https://developers.cloudflare.com/web-analytics/faq/). On a site where people
+leave messages about someone they have lost, that is worth more than the extra detail.
+
+To turn it on: Cloudflare dashboard → **Web Analytics** → **Add a site** → copy the token
+out of the `data-cf-beacon` snippet → set `NEXT_PUBLIC_CF_ANALYTICS_TOKEN` in Vercel and
+redeploy. Works with the grey-cloud DNS-only setup; no proxying needed.
+
+Leave the variable unset and no beacon is loaded at all. That is the default, and the
+right one for a fork.
+
+Note `"spa": false` in the snippet. Left on, the beacon overrides `history.pushState` to
+count client-side route changes — the same API Next's router drives. Real page loads are
+enough for a five-page site, and every link into a form is a full load anyway.
 
 ### Uptime monitoring
 
