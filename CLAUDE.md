@@ -120,6 +120,18 @@ unreachable is a per-form judgment call. Guestbook denies on outage (entries
 publish immediately to a public page); forms writing only to private data may
 allow. Match this pattern for any new form rather than hardcoding one behavior.
 
+**Link to a Turnstile page with a plain `<a>`, never `next/link`.** Turnstile's
+implicit rendering scans for `.cf-turnstile` once, when its script executes, and
+Next loads a `<Script>` exactly once per session — "even if a user navigates
+between multiple routes", per its own docs. So after a client-side navigation the
+script is already loaded, never re-runs, never scans, and the form gets a widget
+container nothing will ever fill: `window.turnstile` defined, no widget, no token,
+and "please complete the verification below" over empty space. Arriving by link
+failed every single time and arriving by reload worked every single time, which
+for months read as the form being intermittently broken. `needsFullLoad()` in
+`src/lib/sections.ts` lists the three pages; the nav and every in-page link
+honour it. Don't turn them back into `<Link>`.
+
 **On the client, never probe Turnstile's DOM — check for `window.turnstile`.**
 The widget renders into a *shadow root*, so `querySelector("iframe")` on its
 container finds nothing no matter how well it is working. A poll written that way

@@ -6,6 +6,33 @@
  * this array from there into a server component yields a proxy, not an array.
  */
 /**
+ * Pages carrying a Turnstile widget, which must be reached by a full page load.
+ *
+ * Turnstile's implicit rendering scans the DOM for `.cf-turnstile` once, when
+ * its script executes. Next loads a `<Script>` exactly once per session — "even
+ * if a user navigates between multiple routes", per its own docs — so after a
+ * client-side navigation the script is already loaded, never runs again, and
+ * never scans. The new page gets a widget container that nothing will ever fill:
+ * `window.turnstile` is defined, no widget appears, no token is ever produced,
+ * and the form says "please complete the verification below" over empty space.
+ *
+ * That was reported as intermittent for months. It isn't: arriving by link fails
+ * every time, arriving by reload works every time. Confirmed from the telemetry
+ * too — `turnstile:ready:script=true` with no token is precisely this shape.
+ *
+ * A plain <a> forces a document load, so the script re-executes and scans. The
+ * cost is one slower navigation on three pages; the alternative is a form that
+ * cannot be submitted. **Do not turn these back into <Link>.**
+ */
+export const NEEDS_FULL_LOAD = ["/photos/add", "/guestbook/add", "/subscribe"];
+
+/** True when a href lands on a page that renders a Turnstile widget. */
+export function needsFullLoad(href: string): boolean {
+  const path = href.split("?")[0];
+  return NEEDS_FULL_LOAD.includes(path);
+}
+
+/**
  * What the artifacts section is called, in one place.
  *
  * The name is not settled — "Artifacts" is accurate but cooler in tone than the

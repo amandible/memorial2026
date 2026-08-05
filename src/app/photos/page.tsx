@@ -27,9 +27,11 @@ export default async function PhotosPage() {
       <hr className="rule" />
 
       <div className="toolbar-row">
-        <Link href="/photos/add" className="btn-primary">
+        {/* Plain anchor, not Link: the target renders a Turnstile widget and a
+            client-side navigation leaves it unrendered. See needsFullLoad. */}
+        <a href="/photos/add" className="btn-primary">
           Add More Photographs
-        </Link>
+        </a>
 
         <p className="muted-note">
           Note: If some of the pictures are not loading, please hit your browser
@@ -51,7 +53,7 @@ export default async function PhotosPage() {
           The gallery is still being put together.{" "}
           {imagesConfigured() ? (
             <>
-              If you have photographs of Joe, <Link href="/photos/add">please send them</Link>{" "}
+              If you have photographs of Joe, <a href="/photos/add">please send them</a>{" "}
               &mdash; they&rsquo;ll appear here.
             </>
           ) : (

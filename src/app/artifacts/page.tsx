@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import Gallery from "../photos/gallery";
 import { getApprovedPhotos } from "@/lib/photos";
 import { ARTIFACTS_LABEL } from "@/lib/sections";
@@ -39,9 +38,11 @@ export default async function ArtifactsPage() {
       </p>
 
       <div className="toolbar-row">
-        <Link href="/photos/add?kind=artifact" className="btn-primary">
+        {/* Plain anchor, not Link: the target renders a Turnstile widget and a
+            client-side navigation leaves it unrendered. See needsFullLoad. */}
+        <a href="/photos/add?kind=artifact" className="btn-primary">
           Send Something of His
-        </Link>
+        </a>
 
         <p className="muted-note">
           Not only photographs &mdash; recordings, scans, letters, and
@@ -59,7 +60,7 @@ export default async function ArtifactsPage() {
           {imagesConfigured() ? (
             <>
               If you have something he made, or something of his worth keeping,{" "}
-              <Link href="/photos/add?kind=artifact">please send a picture of it</Link> &mdash;
+              <a href="/photos/add?kind=artifact">please send a picture of it</a> &mdash;
               it&rsquo;ll appear here.
             </>
           ) : (
