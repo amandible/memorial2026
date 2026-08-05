@@ -132,6 +132,28 @@ export default async function AdminPage() {
     console.error("Failed to load artifact files:", e);
   }
 
+  // Same reasoning: a diagnostics table failing to load must not cost the whole
+  // moderation page. Also covers the window before 007 has been migrated.
+  let trouble: {
+    id: string;
+    stage: string;
+    detail: string | null;
+    files: number | null;
+    user_agent: string | null;
+    created_at: Date;
+  }[] = [];
+  try {
+    trouble = (await db()`
+      select id, stage, detail, files, user_agent, created_at
+      from upload_trouble
+      where created_at > now() - interval '30 days'
+      order by created_at desc
+      limit 50
+    `) as typeof trouble;
+  } catch (e) {
+    console.error("Failed to load upload trouble:", e);
+  }
+
   return (
     <main className="page page-wide" id="main">
       <div className="admin-head">
@@ -216,6 +238,35 @@ export default async function AdminPage() {
               </figcaption>
               <PhotoActions id={p.id} status={p.status} />
             </figure>
+          ))}
+        </div>
+      )}
+
+      <h2>Upload trouble</h2>
+      <p className="muted-note">
+        Failures reported by the browser they happened in. Empty is the good
+        outcome. <code>turnstile:blocked</code> is an ad blocker,{" "}
+        <code>turnstile:unsupported</code> is a browser Cloudflare can&rsquo;t
+        serve &mdash; neither is fixable by the sender retrying, so those are the
+        ones worth writing back about.
+      </p>
+      {trouble.length === 0 ? (
+        <p className="muted-note">Nothing reported.</p>
+      ) : (
+        <div className="entries">
+          {trouble.map((t) => (
+            <article key={t.id} className="entry">
+              <header className="entry-head">
+                <span className="entry-name">
+                  <span className="tag tag-attention">{t.stage}</span> {t.detail ?? "no detail"}
+                </span>
+                <span className="entry-date">
+                  {t.files ?? "?"} file{t.files === 1 ? "" : "s"} &middot;{" "}
+                  {formatDate(t.created_at)}
+                </span>
+              </header>
+              {t.user_agent && <p className="mod-meta">{t.user_agent}</p>}
+            </article>
           ))}
         </div>
       )}

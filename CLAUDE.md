@@ -120,18 +120,41 @@ unreachable is a per-form judgment call. Guestbook denies on outage (entries
 publish immediately to a public page); forms writing only to private data may
 allow. Match this pattern for any new form rather than hardcoding one behavior.
 
-**On the client, never probe Turnstile's DOM — check for `window.turnstile`.**
-The widget renders into a *shadow root*, so `querySelector("iframe")` on its
-container finds nothing no matter how well it is working. A poll written that way
-tells every visitor the form is broken while the widget above it reads "Success!"
-— which is exactly what happened, and it looks like an intermittent bug because
-the message only appears once the timeout elapses. The only thing that status text
-is really about is whether an extension blocked `challenges.cloudflare.com`, and
-the missing global is precisely what that looks like. Related: the submit path in
-`src/app/photos/form.tsx` always calls `waitForToken()` and never refuses to try
-based on that status — the status picks the wording, it does not gate submission.
-A token expires after 300s and this form takes longer than that to fill in, so
-"looks unready" and "will fail" are different claims.
+**On the client, use Turnstile's callbacks — never infer state by polling the
+DOM.** `src/app/photos/form.tsx` renders the widget explicitly
+(`api.js?render=explicit` + `turnstile.render(el, {...})`) so the callbacks can
+be real functions: `callback`, `expired-callback`, `error-callback`,
+`timeout-callback`, `unsupported-callback`, and the two `*-interactive-callback`s.
+Each one names a different reason there is no token, and they need different
+advice — an unsupported browser cannot be fixed by trying again, and telling
+someone to disable an ad blocker they don't have wastes their last option.
+
+Two earlier attempts got this wrong by guessing. First it polled for an
+`<iframe>` in the container: the widget renders into a *shadow root*, so that
+could never succeed and every visitor was eventually told the form was broken
+while the widget read "Success!". Then it polled for `window.turnstile`, which is
+only ever evidence about whether an extension blocked
+`challenges.cloudflare.com`, and collapsed every other failure into one
+misleading sentence.
+
+**Never reset the widget before waiting for a token.** Resetting a challenge that
+is mid-solve throws it away and starts a new one, so the wait is spent on a
+widget that has just gone back to needing a click — and pressing Send again
+repeats it. That is what "press Send again didn't work" was. Reset only what is
+genuinely spent: state is `expired`/`errored`/`timeout`, or `isExpired()` is
+true. A token lasts 300s and this form takes longer than that to fill in, so
+expiry is the normal case, not a fault.
+
+**Failures happen in the visitor's browser, where no log of ours reaches**, and
+Vercel's free tier keeps runtime logs for one hour. `/api/upload-trouble` records
+them to the `upload_trouble` table for the admin page. It is deliberately
+unauthenticated — requiring a verified submission to report a failed verification
+would be circular — so it stores no caller free text beyond a bounded `detail`,
+no personal data, and is rate-limited per hashed IP.
+
+The guestbook and subscribe forms still use implicit rendering. They are short
+enough that token expiry doesn't bite, and they are working; don't convert them
+without a reason.
 
 **A Turnstile token can only be validated once** — a replay comes back
 `timeout-or-duplicate`. This is why `requestUploads` takes both the photo count
