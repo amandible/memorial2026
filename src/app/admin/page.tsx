@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { db } from "@/lib/db";
-import { formatDate } from "@/lib/guestbook";
+import { formatDate, formatDateTime } from "@/lib/guestbook";
 import { isAdmin } from "@/lib/admin-auth";
 import { thumbUrl } from "@/lib/cf-images";
 import { logout } from "./actions";
@@ -261,7 +261,7 @@ export default async function AdminPage() {
                 </span>
                 <span className="entry-date">
                   {t.files ?? "?"} file{t.files === 1 ? "" : "s"} &middot;{" "}
-                  {formatDate(t.created_at)}
+                  {formatDateTime(t.created_at)}
                 </span>
               </header>
               {t.user_agent && <p className="mod-meta">{t.user_agent}</p>}
