@@ -157,13 +157,23 @@ at build time, a year-three failure mode `PLAN.md` §11 explains).
 
 ## Git commits
 
-- **Before editing anything, confirm you are level with `origin/main`.** More than
-  one person works on this repo. Run `git fetch && git status` and read the
-  "behind by N commits" line — `git fetch` alone updates the remote-tracking ref
-  and leaves your working copy where it was, so it is possible to `--all` your way
-  to a correct answer about the remote while patching stale files. That happened:
-  six of Luke's commits landed between a pull and the next fetch, and edits were
-  written against his older versions of files he had since rewritten.
+- **Run `git pull --ff-only origin main` before you edit anything. Not `fetch` —
+  `pull`.** More than one person works on this repo. `git fetch` updates the
+  remote-tracking ref and leaves the working copy exactly where it was, so it is
+  possible to get a correct answer about the remote while still patching stale
+  files. Reading the "behind by N commits" line is not enough either: knowing you
+  are behind and editing anyway is the same bug.
+
+  This has now happened twice. First, six of Luke's commits landed between a pull
+  and the next fetch, and edits were written against his older versions of files
+  he had since rewritten. Then again: a whole session of recipe edits was made
+  against a checkout two hours stale, and the only thing that caught it was a
+  fetch at commit time that rejected the push. It was luck, not process, and
+  describing it afterwards as "he pushed while I was working" was wrong — he had
+  pushed long before the work started.
+
+  Pull at the start of the task, and pull again before a commit if any real time
+  has passed.
 - **Do not include Claude attribution in commit messages.** No `Co-Authored-By`,
   no "Generated with" footer.
 - **Never `git add -A` or `git add .`** — stage explicit paths, or `git add -u`.
