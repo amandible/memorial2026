@@ -36,7 +36,18 @@ type Picked = {
 
 const MAX_FILES = 12;
 const MAX_OTHER_FILES = 6;
-const MAX_IMAGE_BYTES = 25 * 1024 * 1024;
+/**
+ * Cloudflare Images refuses anything over 10 MB, so this has to match theirs.
+ *
+ * It used to say 25 MB, which meant a photograph between the two limits passed
+ * our check, uploaded, and was rejected at the far end — the sender got
+ * "IMG_4032.jpeg (413)" after waiting through the upload, with no idea what to
+ * do about it. Better to say so before they wait.
+ *
+ * Their other documented limits are 12,000 px on a side and 100 megapixels;
+ * nothing a camera produces comes near those, so only size is checked here.
+ */
+const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 const MAX_OTHER_BYTES = 100 * 1024 * 1024;
 
 /**
@@ -188,7 +199,9 @@ export default function PhotoForm({
     );
     if (tooBig) {
       setError(
-        `"${tooBig.name}" is larger than ${isImageFile(tooBig) ? "25 MB" : "100 MB"}. Please send that one to contact@joeweisman.org instead.`,
+        isImageFile(tooBig)
+          ? `"${tooBig.name}" is ${(tooBig.size / 1048576).toFixed(0)} MB, and our image service can't take anything over 10 MB. Please email that one to contact@joeweisman.org — we'd still very much like to have it, and we'll resize it at this end.`
+          : `"${tooBig.name}" is larger than 100 MB. Please email that one to contact@joeweisman.org instead.`,
       );
       return;
     }
@@ -645,7 +658,7 @@ export default function PhotoForm({
               }}
             />
             <span className="muted-note">
-              Up to {MAX_FILES} photographs at a time, 25 MB each &mdash; straight off
+              Up to {MAX_FILES} photographs at a time, 10 MB each &mdash; straight off
               a phone is fine. Other kinds of file are welcome too: recordings,
               scans, letters, documents, up to {MAX_OTHER_FILES} at a time and 100 MB
               each. Those go into the family archive rather than onto the site.
