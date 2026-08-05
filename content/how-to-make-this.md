@@ -2,7 +2,7 @@
 title: "How to make a site like this"
 ---
 
-This site was made using a project created by Jazz Weisman and Luke Weisman Miratrix. Below is their message and advice about using the project yourself
+*This site was made using a project created by Jazz Weisman and Luke Weisman Miratrix. Below is their message and advice about using the project yourself.*
 
 -----
 
