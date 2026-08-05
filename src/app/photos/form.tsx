@@ -655,9 +655,22 @@ export default function PhotoForm({
             share {savedFiles === 1 ? "it" : "them"}.
           </p>
         )}
-        <button type="button" className="btn-quiet" onClick={() => setSaved(0)}>
+        {/* A link that reloads the page, not a button that re-shows the form.
+            Succeeding unmounts the form, which destroys the div the Turnstile
+            widget was living in. Putting the form back with setSaved(0) mounts a
+            fresh, empty container — and the script has already run and will
+            never scan again, so no widget appears and the second submission
+            cannot be completed. One good send followed by a dead one was exactly
+            this. Reloading gives the script a new execution and a new widget.
+
+            Carries the kind through, so someone sending artifacts stays in the
+            artifacts flow rather than being dropped back into photographs. */}
+        <a
+          href={defaultKind === "artifact" ? "/photos/add?kind=artifact" : "/photos/add"}
+          className="btn-quiet"
+        >
           Send more
-        </button>{" "}
+        </a>{" "}
         {savedKinds.includes("photo") && (
           <Link href="/photos" className="btn-quiet">
             View the photographs
