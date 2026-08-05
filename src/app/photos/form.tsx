@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Script from "next/script";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   requestUploads,
   recordPhotos,
@@ -79,71 +79,6 @@ async function exifLite() {
   };
 }
 
-const EMAIL_FALLBACK =
-  "you can email them to contact@joeweisman.org instead — we would much rather have them that way than not at all. Your photos and captions are still here.";
-
-/**
- * Say what actually went wrong, because the advice differs completely.
- *
- * "Please complete the verification and press Send again" was shown for every
- * one of these. For an unsupported browser that is false and unactionable, and
- * it sends someone hunting for a checkbox that will never work.
- */
-function turnstileFailureMessage(state: string, code: string | null): string {
-  switch (state) {
-    case "unsupported":
-      return `The security check doesn't support this browser, which is nothing you've done wrong and isn't worth fighting — ${EMAIL_FALLBACK}`;
-    case "blocked":
-      return `We couldn't load the security check at all. That is usually an ad blocker or privacy extension. Try switching it off for this site and reloading — or ${EMAIL_FALLBACK}`;
-    case "timeout":
-      return `The security check timed out waiting for an answer. Reload the page and try once more, or ${EMAIL_FALLBACK}`;
-    case "interactive":
-      return "The security check below is waiting for you — please finish it, then press Send again. Your photos and captions are still here.";
-    case "errored":
-      return `The security check failed${code ? ` (${code})` : ""}. Reload the page and try again, or ${EMAIL_FALLBACK}`;
-    case "expired":
-      return "The security check expired while you were writing. It is refreshing now — give it a couple of seconds and press Send again. Your photos and captions are still here.";
-    default:
-      return "Please complete the verification below, then press Send again. Your photos and captions are still here.";
-  }
-}
-
-/**
- * Tell the server a submission failed in the browser.
- *
- * Everything that has gone wrong with this form went wrong on someone else's
- * machine, where nothing we can read reaches. Vercel's free tier keeps runtime
- * logs for an hour, so even the server half is gone by the time anyone reports
- * it. Best effort and deliberately silent: this must never be the reason a
- * submission fails.
- */
-async function reportClientFailure(info: {
-  stage: string;
-  detail: string;
-  files: number;
-}): Promise<void> {
-  try {
-    await fetch("/api/upload-trouble", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify(info),
-      keepalive: true,
-    });
-  } catch {
-    // Reporting a failure must not create one.
-  }
-}
-
-/** Only the parts of Cloudflare's API this form uses. */
-type TurnstileApi = {
-  ready: (cb: () => void) => void;
-  render: (el: HTMLElement, params: Record<string, unknown>) => string;
-  reset: (id?: string) => void;
-  remove: (id?: string) => void;
-  getResponse: (id?: string) => string | undefined;
-  isExpired: (id?: string) => boolean;
-};
-
 type UploadOutcome =
   | { ok: true }
   | { ok: false; kind: "http"; label: string }
@@ -196,34 +131,10 @@ export default function PhotoForm({
   /** Non-photo files in the batch, which have no page to link to. */
   const [savedFiles, setSavedFiles] = useState(0);
   const [verifying, setVerifying] = useState(false);
-  /**
-   * Why there is no token, when there is no token.
-   *
-   * Previously this was one "loading | ready | error" flag inferred by polling,
-   * and every distinct failure collapsed into the same sentence: "please
-   * complete the verification below, then press Send again." Someone hit that
-   * and pressing Send again did not help, which is what it looks like when the
-   * cause was never "you haven't clicked it yet".
-   *
-   * Turnstile reports each of these separately through callbacks, so they are
-   * kept separate here — they need different advice. An unsupported browser
-   * cannot be fixed by trying again, and telling someone to disable an ad
-   * blocker they do not have wastes the one thing they have left.
-   */
-  type TsState =
-    | "loading" // script hasn't run yet
-    | "ready" // widget rendered, no token yet
-    | "solved" // we hold a token
-    | "expired" // had one, it aged out
-    | "interactive" // showing a challenge that needs a click
-    | "timeout" // interactive challenge went unanswered
-    | "unsupported" // Turnstile does not support this browser
-    | "errored" // challenge failed or the network did
-    | "blocked"; // script never arrived at all
-  const [tsState, setTsState] = useState<TsState>("loading");
-  const [tsErrorCode, setTsErrorCode] = useState<string | null>(null);
-  const tokenRef = useRef<string | null>(null);
-  const widgetId = useRef<string | null>(null);
+  // Implicit rendering gives no event for "the widget appeared" — Cloudflare's
+  // script just scans the DOM once it loads. Polling the container for the
+  // iframe it injects is the only way to know the empty box isn't permanent.
+  const [tsStatus, setTsStatus] = useState<"loading" | "ready" | "error">("loading");
   const fileInput = useRef<HTMLInputElement>(null);
   const turnstileBox = useRef<HTMLDivElement>(null);
   /** Every object URL handed out, so none leaks when the page goes away. */
@@ -237,91 +148,46 @@ export default function PhotoForm({
     };
   }, []);
 
-  /**
-   * Render the widget ourselves, so it can tell us what went wrong.
-   *
-   * Implicit rendering (a .cf-turnstile div that the script finds on its own)
-   * gives no way to receive the callbacks, which meant the only signal available
-   * was polling for a token and guessing at the silence. Explicit rendering
-   * takes real function references, so every failure mode names itself.
-   */
-  const mountTurnstile = useCallback(() => {
-    if (!siteKey || widgetId.current) return;
-    const api = (window as unknown as { turnstile?: TurnstileApi }).turnstile;
-    const box = turnstileBox.current;
-    if (!api || !box) return;
-
-    api.ready(() => {
-      // React runs effects twice in development; a second render here would
-      // leave an orphaned widget behind.
-      if (widgetId.current || !turnstileBox.current) return;
-
-      widgetId.current = api.render(turnstileBox.current, {
-        sitekey: siteKey,
-        action: "turnstile-spin-v2",
-        "refresh-expired": "auto",
-        callback: (token: string) => {
-          tokenRef.current = token;
-          setTsErrorCode(null);
-          setTsState("solved");
-        },
-        "expired-callback": () => {
-          // Expected on this form, not a fault: tokens last 300 seconds and
-          // writing captions for a dozen photographs takes longer than that.
-          tokenRef.current = null;
-          setTsState("expired");
-        },
-        "before-interactive-callback": () => setTsState("interactive"),
-        "after-interactive-callback": () =>
-          setTsState((s) => (s === "interactive" ? "ready" : s)),
-        "timeout-callback": () => {
-          tokenRef.current = null;
-          setTsState("timeout");
-        },
-        "unsupported-callback": () => {
-          tokenRef.current = null;
-          setTsState("unsupported");
-        },
-        "error-callback": (code?: string) => {
-          tokenRef.current = null;
-          setTsErrorCode(code ?? null);
-          setTsState("errored");
-          // Returning true keeps the widget alive so its own retry can run;
-          // returning false would tear it down and leave an empty box.
-          return true;
-        },
-      });
-      setTsState((s) => (s === "loading" ? "ready" : s));
-    });
-  }, [siteKey]);
-
   useEffect(() => {
     if (!siteKey) return;
-    // The script may already be present from an earlier mount.
-    mountTurnstile();
+    let cancelled = false;
+    const start = Date.now();
 
-    // If it never arrives at all, that is an extension or a network blocking
-    // challenges.cloudflare.com, which is a different problem from any of the
-    // widget's own failures and needs different advice.
-    const giveUp = setTimeout(() => {
-      if (!(window as unknown as { turnstile?: unknown }).turnstile) {
-        setTsState((s) => (s === "loading" ? "blocked" : s));
-      }
-    }, 20_000);
+    function tick() {
+      if (cancelled) return;
 
-    const id = widgetId.current;
+      // Detect the *script*, not the widget. Looking for an iframe inside the
+      // container was wrong twice over: Turnstile renders into a shadow root,
+      // so querySelector never finds one, and a visibly working widget showing
+      // "Success!" still reported "taking longer than expected".
+      //
+      // The only thing this warning is really about is whether an extension
+      // blocked challenges.cloudflare.com, and that is exactly what the absence
+      // of window.turnstile means. If the script is there, the check works —
+      // whether the widget has finished is not our business.
+      const scriptLoaded =
+        typeof (window as { turnstile?: unknown }).turnstile !== "undefined";
+      const solved = Boolean(readToken());
+      const hasWidget = Boolean(turnstileBox.current?.firstElementChild);
+
+      const next: typeof tsStatus =
+        scriptLoaded || solved || hasWidget
+          ? "ready"
+          : Date.now() - start > 20_000
+            ? "error"
+            : "loading";
+
+      // Only set state when it actually changes; this ticks every 300ms and
+      // would otherwise re-render the whole form ~65 times while loading.
+      setTsStatus((prev) => (prev === next ? prev : next));
+      if (next === "ready") return;
+      setTimeout(tick, 300);
+    }
+    tick();
     return () => {
-      clearTimeout(giveUp);
-      if (id) {
-        try {
-          (window as unknown as { turnstile?: TurnstileApi }).turnstile?.remove(id);
-        } catch {
-          // Already gone; nothing to clean up.
-        }
-        widgetId.current = null;
-      }
+      cancelled = true;
     };
-  }, [siteKey, mountTurnstile]);
+  }, [siteKey]);
 
   function onPick(list: FileList | null) {
     setError(null);
@@ -480,40 +346,19 @@ export default function PhotoForm({
     setPicked((cur) => cur.filter((x) => x.key !== p.key));
   }
 
-  function turnstileApi(): TurnstileApi | undefined {
-    return (window as unknown as { turnstile?: TurnstileApi }).turnstile;
-  }
-
   function resetTurnstile() {
-    tokenRef.current = null;
     // Turnstile removes its own widget on some failures (110200, for one), and
     // reset() then throws "Nothing to reset found for provided container".
     // That turned a clear error into the generic catch-all. Never let cleanup
     // become the reported failure.
     try {
-      turnstileApi()?.reset(widgetId.current ?? undefined);
-      setTsState((s) => (s === "solved" || s === "expired" ? "ready" : s));
+      (window as { turnstile?: { reset: () => void } }).turnstile?.reset();
     } catch (e) {
       console.warn("Turnstile reset failed (widget already gone):", e);
     }
   }
 
-  /**
-   * The token, from whichever source has it.
-   *
-   * The callback is authoritative and arrives the moment the challenge is
-   * solved. getResponse() is the documented accessor and covers a token that
-   * existed before this component mounted. The hidden input is last: it is a DOM
-   * detail, and assuming DOM details is what caused the previous two bugs here.
-   */
   function readToken(): string | null {
-    if (tokenRef.current) return tokenRef.current;
-    try {
-      const t = turnstileApi()?.getResponse(widgetId.current ?? undefined);
-      if (t) return t;
-    } catch {
-      // No widget rendered yet.
-    }
     return (
       (document.querySelector('[name="cf-turnstile-response"]') as HTMLInputElement | null)
         ?.value || null
@@ -569,49 +414,28 @@ export default function PhotoForm({
       let token = readToken();
 
       if (!token) {
+        // Always wait, whatever the passive poll thinks. An earlier version
+        // bailed immediately when tsStatus was "error" — but that status only
+        // means "hasn't appeared yet", not "never will", and a slow widget that
+        // was about to work got a hard "an ad blocker is active" instead. Never
+        // refuse to try because of a guess about why something is slow.
+        //
+        // Waiting less when it already looks stuck, so a genuinely blocked
+        // widget doesn't hold someone for the full twenty seconds.
         setVerifying(true);
-
-        // Reset ONLY what is genuinely spent. The previous version reset
-        // unconditionally before waiting, which is the likeliest cause of
-        // "press Send again didn't work": pressing Send while the challenge is
-        // mid-solve threw that challenge away and started a new one, so the
-        // twenty-second wait was spent on a widget that had just been returned
-        // to needing another click. Pressing Send again did the same thing
-        // again. An expired or errored widget does need the reset; one that is
-        // simply still working needs to be left alone.
-        const spent =
-          tsState === "expired" ||
-          tsState === "errored" ||
-          tsState === "timeout" ||
-          (() => {
-            try {
-              return turnstileApi()?.isExpired(widgetId.current ?? undefined) === true;
-            } catch {
-              return false;
-            }
-          })();
-        if (spent) resetTurnstile();
-
-        // Always wait, whatever the state says. An earlier version bailed
-        // immediately on a bad status — but "hasn't appeared yet" is not "never
-        // will", and a slow widget that was about to work got a hard "an ad
-        // blocker is active" instead. Never refuse to try because of a guess
-        // about why something is slow. Wait less only when the script itself
-        // never arrived, since nothing is coming.
-        token = await waitForToken(tsState === "blocked" ? 8_000 : 20_000);
+        resetTurnstile();
+        token = await waitForToken(tsStatus === "error" ? 8_000 : 20_000);
         setVerifying(false);
       }
 
       if (!token) {
-        // Only now is it fair to say why. Each of these is a different problem
-        // with different advice, and collapsing them into one sentence is what
-        // made the last round undiagnosable.
-        setError(turnstileFailureMessage(tsState, tsErrorCode));
-        void reportClientFailure({
-          stage: "verify",
-          detail: `turnstile:${tsState}${tsErrorCode ? `:${tsErrorCode}` : ""}`,
-          files: picked.length,
-        });
+        // Only now is it fair to blame the browser — we waited and nothing came.
+        // tsStatus picks the wording, it no longer decides whether to try.
+        setError(
+          tsStatus === "error"
+            ? "We couldn't load the security check — this usually means an ad blocker or privacy extension is active. Try turning it off for this site and reloading, or email the photos to contact@joeweisman.org instead. Your photos and captions are still here."
+            : "Please complete the verification below, then press Send again. Your photos and captions are still here.",
+        );
         return;
       }
 
@@ -747,7 +571,6 @@ export default function PhotoForm({
         `Something went wrong ${where}. Please try again, or email them to contact@joeweisman.org.` +
           (process.env.NODE_ENV === "development" ? ` [${detail}]` : ""),
       );
-      void reportClientFailure({ stage, detail: detail.slice(0, 200), files: picked.length });
       resetTurnstile();
     } finally {
       setBusy(false);
@@ -799,12 +622,10 @@ export default function PhotoForm({
     <>
       {siteKey && (
         <Script
-          // Explicit rendering: we call turnstile.render ourselves so the
-          // callbacks can be real functions rather than globals hung off window.
-          src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit"
-          strategy="afterInteractive"
-          onReady={mountTurnstile}
-          onError={() => setTsState("blocked")}
+          src="https://challenges.cloudflare.com/turnstile/v0/api.js"
+          async
+          defer
+          onError={() => setTsStatus("error")}
         />
       )}
 
@@ -1022,33 +843,27 @@ export default function PhotoForm({
 
           {siteKey && (
             <div className="field">
-              {/* No cf-turnstile class and no data-sitekey: those are what make
-                  the script render a widget by itself, and it would then render
-                  a second one on top of the one we render explicitly. */}
-              <div ref={turnstileBox} />
-
-              {/* Only says something when there is something worth saying. The
-                  ordinary states — waiting, solved — need no commentary, and
-                  narrating them is what previously told people the form was
-                  broken while the widget above read "Success!". */}
-              {tsState === "unsupported" && (
+              <div
+                ref={turnstileBox}
+                className="cf-turnstile"
+                data-sitekey={siteKey}
+                data-action="turnstile-spin-v2"
+                /* Renew the token automatically when it ages out, so submitting
+                   after a long caption-writing session usually just works. */
+                data-refresh-expired="auto"
+              />
+              {tsStatus === "loading" && (
                 <p className="muted-note" role="status">
-                  The security check doesn&rsquo;t support this browser. Please
-                  email your photographs to contact@joeweisman.org and
-                  we&rsquo;ll add them for you.
+                  Loading the verification check&hellip;
                 </p>
               )}
-              {tsState === "blocked" && (
+              {tsStatus === "error" && (
                 <p className="muted-note" role="status">
-                  The verification check couldn&rsquo;t load &mdash; usually an ad
-                  blocker or privacy extension. Try switching it off for this
-                  site and reloading, or email the photos to
-                  contact@joeweisman.org instead.
-                </p>
-              )}
-              {tsState === "timeout" && (
-                <p className="muted-note" role="status">
-                  The verification check timed out. Reload the page to try again.
+                  Authenticating the form is taking longer than expected. Try
+                  reloading the page — if the verification check still
+                  doesn&rsquo;t appear, an ad blocker or privacy extension may be
+                  blocking it, or you can email the photos to contact@joeweisman.org
+                  instead.
                 </p>
               )}
             </div>
