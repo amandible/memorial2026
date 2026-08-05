@@ -4,9 +4,8 @@ import Nav from "./nav";
 import Footer from "./footer";
 import "./tokens.css";
 
-const SITE_NAME = "Joe Weisman";
-const DESCRIPTION =
-  "In memory of Joe Weisman, 1944–2026. Curiosity, generosity, justice, and living life to the fullest.";
+const SITE_NAME = "Bill Melanson";
+const DESCRIPTION = "In memory of Bill Melanson, 1965–2026. More to come soon.";
 
 /**
  * Absolute base for Open Graph URLs.

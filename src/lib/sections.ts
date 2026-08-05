@@ -21,6 +21,5 @@ export const SECTIONS = [
   { href: "/photos", label: "Photographs" },
   { href: "/artifacts", label: ARTIFACTS_LABEL },
   { href: "/guestbook", label: "Guestbook" },
-  { href: "/recipes", label: "Recipes" },
   { href: "/subscribe", label: "Stay in touch" },
 ] as const;

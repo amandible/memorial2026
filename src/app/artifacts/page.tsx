@@ -24,18 +24,11 @@ export default async function ArtifactsPage() {
   return (
     <main className="page page-photos" id="main">
       <h1 className="page-title">{ARTIFACTS_LABEL}</h1>
-      {/* Part of the title, above the rule — as its own block below it, this
-          was one more thing to read before reaching the pictures. */}
-      <blockquote className="epigraph">
-        <p>Work for beauty as for bread.</p>
-        <cite>the motto on the harpsichord he built</cite>
-      </blockquote>
       <hr className="rule" />
 
       <p className="prose">
-        Things Joe made, marked, or kept &mdash; the saunas and fish ponds and
-        improved kitchens, the annotated recipes, the block-print hand that was
-        unmistakably his.
+        Things that were Bill&rsquo;s &mdash; instruments, gear, and other things he
+        made or kept.
       </p>
 
       <div className="toolbar-row">
