@@ -169,6 +169,8 @@ export default function PhotoForm({
   const turnstileBox = useRef<HTMLDivElement>(null);
   /** Every object URL handed out, so none leaks when the page goes away. */
   const objectUrls = useRef<Set<string>>(new Set());
+  /** Only ever attempt to re-render the widget once per page. */
+  const recoveryTried = useRef(false);
 
   useEffect(() => {
     const urls = objectUrls.current;
@@ -396,6 +398,44 @@ export default function PhotoForm({
   }
 
   /**
+   * Last resort: put a widget into the container ourselves.
+   *
+   * When no token arrives it is nearly always because the container is empty —
+   * Cloudflare's script scans for it once, on load, and anything that remounts
+   * the container afterwards leaves it unscanned forever. A reload fixes that,
+   * but it also discards every file and caption the person has just entered,
+   * which is a miserable thing to ask for after twelve of them.
+   *
+   * Rendering into the container directly costs them nothing. Only attempted
+   * after the wait has already failed, so the worst case is the state we were
+   * in anyway: if this throws — including because a widget is in fact already
+   * there — it is caught and the advice falls back to reloading.
+   *
+   * Only `sitekey` and `action` are passed. An earlier attempt to drive this API
+   * passed seven callbacks without checking that render() accepts them, threw,
+   * and left an empty box with no error. Both of these are documented and
+   * verified: action allows alphanumerics, underscore and hyphen, up to 32.
+   */
+  async function tryRenderWidget(): Promise<boolean> {
+    if (!siteKey || !turnstileBox.current) return false;
+    const api = (window as unknown as {
+      turnstile?: { render?: (el: HTMLElement, o: Record<string, unknown>) => string };
+    }).turnstile;
+    if (typeof api?.render !== "function") return false;
+
+    try {
+      api.render(turnstileBox.current, {
+        sitekey: siteKey,
+        action: "turnstile-spin-v2",
+      });
+      return true;
+    } catch (e) {
+      console.warn("Could not render a replacement Turnstile widget:", e);
+      return false;
+    }
+  }
+
+  /**
    * Wait for the widget to produce a token.
    *
    * Turnstile tokens last 300 seconds, and this form routinely takes longer —
@@ -471,22 +511,42 @@ export default function PhotoForm({
         setVerifying(false);
       }
 
+      // Nothing arrived. The usual reason is an empty container rather than an
+      // unsolved challenge, so try to put a widget back before asking anything
+      // of the person — that keeps their files and captions. Once per attempt:
+      // if it did not help the first time it will not help on a retry.
+      let recovered = false;
+      if (!token && !recoveryTried.current) {
+        recoveryTried.current = true;
+        recovered = await tryRenderWidget();
+        if (recovered) {
+          setVerifying(true);
+          token = await waitForToken(20_000);
+          setVerifying(false);
+        }
+      }
+
       if (!token) {
-        // Only now is it fair to blame the browser — we waited and nothing came.
-        // tsStatus picks the wording, it no longer decides whether to try.
+        // Only now is it fair to say something, and reload leads, because that
+        // is what has actually worked every time. The old wording — "complete
+        // the verification below, then press Send again" — was shown whenever no
+        // token arrived, including the common case where there was nothing below
+        // to complete, and pressing Send only repeated the same silent wait.
         setError(
           tsStatus === "error"
-            ? "We couldn't load the security check — this usually means an ad blocker or privacy extension is active. Try turning it off for this site and reloading, or email the photos to contact@joeweisman.org instead. Your photos and captions are still here."
-            : "Please complete the verification below, then press Send again. Your photos and captions are still here.",
+            ? "We couldn't load the security check — this usually means an ad blocker or privacy extension is active. Try switching it off for this site and reloading, or email the photos to contact@joeweisman.org instead."
+            : recovered
+              ? "The security check is still loading. Give it a few seconds and press Send again — your photos and captions are still here."
+              : "The security check didn't load properly. Please reload this page and choose the photographs again — sorry, that does mean picking them a second time. If it happens again, email them to contact@joeweisman.org and we'll add them for you.",
         );
         void reportClientFailure({
           stage: "verify",
-          // Whether the script global ever appeared is the one thing that
-          // separates "blocked outright" from "loaded but produced nothing",
-          // and those have completely different causes.
+          // Whether the script global ever appeared separates "blocked outright"
+          // from "loaded but produced nothing", and whether re-rendering helped
+          // separates "container was empty" from something else again.
           detail: `turnstile:${tsStatus}:script=${
             typeof (window as { turnstile?: unknown }).turnstile !== "undefined"
-          }`,
+          }:rerender=${recovered}`,
           files: picked.length,
         });
         return;
