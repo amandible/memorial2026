@@ -51,11 +51,11 @@ export default async function PhotosPage() {
           The gallery is still being put together.{" "}
           {imagesConfigured() ? (
             <>
-              If you have photographs of Joe, <Link href="/photos/add">please send them</Link>{" "}
+              If you have photographs of Bill, <Link href="/photos/add">please send them</Link>{" "}
               &mdash; they&rsquo;ll appear here.
             </>
           ) : (
-            <>If you have photographs of Joe, there will be a way to add them shortly.</>
+            <>If you have photographs of Bill, there will be a way to add them shortly.</>
           )}
         </p>
       ) : (

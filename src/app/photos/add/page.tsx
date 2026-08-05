@@ -44,8 +44,8 @@ export default async function AddPhotosPage({
           <h2>Send your photographs</h2>
           <p className="prose">
             Photo submissions aren&rsquo;t open quite yet. If you have pictures of
-            Joe, please start looking them out &mdash; or send them now to{" "}
-            <a href="mailto:contact@joeweisman.org">contact@joeweisman.org</a>.
+            Bill, please start looking them out &mdash; or send them now to{" "}
+            <a href="mailto:contact@billmelanson.org">contact@billmelanson.org</a>.
           </p>
         </section>
       )}

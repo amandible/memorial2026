@@ -709,7 +709,7 @@ export default function PhotoForm({
                       <legend className="picked-caption-label">What is this?</legend>
                       {(
                         [
-                          ["photo", "Photograph of Joe"],
+                          ["photo", "Photograph of Bill"],
                           ["artifact", "Something he made or owned"],
                         ] as const
                       ).map(([value, label]) => (

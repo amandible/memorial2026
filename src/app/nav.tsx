@@ -11,7 +11,7 @@ export default function Nav() {
     <header className="sitenav">
       <nav className="sitenav-inner" aria-label="Main">
         <Link href="/" className="wordmark" aria-current={pathname === "/" ? "page" : undefined}>
-          Joe Weisman
+          Bill Melanson
         </Link>
         <ul>
           {SECTIONS.map(({ href, label }) => {

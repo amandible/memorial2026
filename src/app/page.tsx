@@ -19,15 +19,15 @@ export default function Home() {
       <figure className="portrait">
         <Image
           src={portrait}
-          alt="Joe Weisman on the playa in a wide-brimmed hat and dusty work gloves, arms open in a shrug, a dust-covered car beside him."
+          alt="Bill Melanson playing bass guitar outdoors."
           priority
           sizes="(max-width: 40rem) 100vw, 40rem"
           placeholder="blur"
         />
       </figure>
 
-      <h1 className="name">Joe Weisman</h1>
-      <p className="dates">December 16, 1944 &ndash; July 10, 2026</p>
+      <h1 className="name">Bill Melanson</h1>
+      <p className="dates">July 27, 1965 &ndash; August 4, 2026</p>
       <hr className="rule" />
 
       {/* Source is ours and lives in the repo, so this HTML is trusted.

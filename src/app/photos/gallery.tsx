@@ -96,7 +96,7 @@ export default function Gallery({ photos }: { photos: GalleryPhoto[] }) {
               aria-label={p.caption ? `Enlarge: ${p.caption}` : "Enlarge photograph"}
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={p.thumb} alt={p.caption ?? "A photograph of Joe Weisman"} loading="lazy" decoding="async" />
+              <img src={p.thumb} alt={p.caption ?? "A photograph of Bill Melanson"} loading="lazy" decoding="async" />
             </button>
             {(() => {
               const yr = yearWorthShowing(p.year, p.caption);
@@ -131,7 +131,7 @@ export default function Gallery({ photos }: { photos: GalleryPhoto[] }) {
         {current && (
           <div className="lightbox-inner">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={current.full} alt={current.caption ?? "A photograph of Joe Weisman"} />
+            <img src={current.full} alt={current.caption ?? "A photograph of Bill Melanson"} />
 
             <div className="lightbox-bar">
               <button

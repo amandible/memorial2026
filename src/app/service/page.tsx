@@ -23,8 +23,8 @@ export default function ServicePage() {
   return (
     <Placeholder title="The Service">
       <p>
-        A memorial for Joe will be held in September. The date, time, and place
-        will be posted here as soon as they are settled.
+        Services for Bill are being arranged. Details will be posted here as
+        soon as they are settled.
       </p>
       <p>
         If you would like to be told when the details are confirmed, you can{" "}

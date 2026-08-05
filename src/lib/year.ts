@@ -12,7 +12,7 @@
 export function parseYear(input: unknown): number | null {
   const n = Number.parseInt(String(input ?? "").trim(), 10);
   if (!Number.isFinite(n)) return null;
-  // Joe was born in 1944, so a photograph of him cannot predate that.
-  if (n < 1944 || n > new Date().getFullYear()) return null;
+  // Bill was born in 1965, so a photograph of him cannot predate that.
+  if (n < 1965 || n > new Date().getFullYear()) return null;
   return n;
 }

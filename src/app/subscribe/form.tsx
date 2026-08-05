@@ -64,7 +64,7 @@ export default function SubscribeForm({ siteKey }: { siteKey?: string }) {
 
         <div className="field">
           <label htmlFor="note">
-            How did you know Joe? <span className="optional">(optional)</span>
+            How did you know Bill? <span className="optional">(optional)</span>
           </label>
           <textarea id="note" name="note" rows={3} maxLength={500} />
         </div>

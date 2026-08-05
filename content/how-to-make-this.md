@@ -2,6 +2,10 @@
 title: "How to make a site like this"
 ---
 
+This site was made using a project created by Jazz Weisman and Luke Weisman Miratrix. Below is their message and advice about using the project yourself
+
+-----
+
 Joe Weisman liked to build things himself. He also didn't like websites with advertising and lots of social media links. He liked clean and simple design.
 
 To honor this, we decided to build him a memorial site from scratch. But to also honor his desire to make things that improved the world more generally, we thought it would be good to make all the code and content public, so others could use our work to make their own sites. So if you're facing the same task for someone you've lost, please copy this whole project and make it yours.

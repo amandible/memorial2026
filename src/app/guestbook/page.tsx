@@ -50,7 +50,7 @@ export default async function GuestbookPage({
       ) : entries.length === 0 ? (
         <p className="prose empty-state">
           {page === 0
-            ? "No messages yet. If you knew Joe, yours would be the first."
+            ? "No messages yet. If you knew Bill, yours would be the first."
             : "There are no more messages."}
         </p>
       ) : (

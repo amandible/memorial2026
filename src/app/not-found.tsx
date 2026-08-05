@@ -18,7 +18,7 @@ export default function NotFound() {
         </p>
         <ul className="plainlist">
           <li>
-            <Link href="/">Joe&rsquo;s obituary</Link>
+            <Link href="/">Bill&rsquo;s obituary</Link>
           </li>
           {SECTIONS.map(({ href, label }) => (
             <li key={href}>
