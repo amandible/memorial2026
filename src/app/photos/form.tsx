@@ -414,6 +414,20 @@ export default function PhotoForm({
       let token = readToken();
 
       if (!token) {
+        // Wait. Do NOT reset first.
+        //
+        // Resetting here threw away whatever the widget was doing and started a
+        // fresh challenge, so the wait below ran against a widget that had just
+        // been put back to needing another click — and pressing Send again did
+        // the same thing again. Someone reported exactly that: told to complete
+        // the verification and press Send, did, and it made no difference.
+        //
+        // Nothing needs the reset. Tokens last 300 seconds and this form takes
+        // longer than that to fill in, but `data-refresh-expired="auto"` on the
+        // widget is Cloudflare's default and renews an expired one by itself;
+        // waiting is all that's required to pick the new one up. A widget that
+        // errored retries on its own too, every 8 seconds by default.
+        //
         // Always wait, whatever the passive poll thinks. An earlier version
         // bailed immediately when tsStatus was "error" — but that status only
         // means "hasn't appeared yet", not "never will", and a slow widget that
@@ -423,7 +437,6 @@ export default function PhotoForm({
         // Waiting less when it already looks stuck, so a genuinely blocked
         // widget doesn't hold someone for the full twenty seconds.
         setVerifying(true);
-        resetTurnstile();
         token = await waitForToken(tsStatus === "error" ? 8_000 : 20_000);
         setVerifying(false);
       }
@@ -877,7 +890,10 @@ export default function PhotoForm({
 
           {verifying && (
             <p className="muted-note" role="status">
-              Refreshing the verification&hellip; this takes a moment.
+              {/* We are no longer refreshing anything, only waiting for the
+                  widget to finish. Saying "refreshing" implied we had restarted
+                  it, which is what the removed reset actually did. */}
+              Waiting for the verification check&hellip; this takes a moment.
             </p>
           )}
 
