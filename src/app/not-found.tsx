@@ -29,7 +29,7 @@ export default function NotFound() {
       </div>
       <p className="contact-note">
         Still stuck? Write to{" "}
-        <a href="mailto:contact@joeweisman.org">contact@joeweisman.org</a>.
+        <a href="mailto:contact@billmelanson.org">contact@billmelanson.org</a>.
       </p>
     </main>
   );

@@ -68,7 +68,7 @@ export async function subscribe(
     return {
       status: "error",
       message:
-        "Something went wrong saving that. Please try again, or write to contact@joeweisman.org.",
+        "Something went wrong saving that. Please try again, or write to contact@billmelanson.org.",
     };
   }
 

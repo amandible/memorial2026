@@ -7,6 +7,7 @@ import { archivePhotoQuietly } from "@/lib/archive";
 import { deleteObject } from "@/lib/r2";
 import { parseYear } from "@/lib/exif";
 import { parseKind } from "@/lib/photos";
+import { PHOTO_KINDS } from "@/lib/photo-kinds";
 import { checkPassword, grantSession, revokeSession, isAdmin } from "@/lib/admin-auth";
 
 export type LoginState = { error?: string };
@@ -14,15 +15,14 @@ export type LoginState = { error?: string };
 /**
  * Refresh everywhere a photograph is visible.
  *
- * Both galleries, because a photograph can move between them and because
+ * All three galleries, because a photograph can move between them and because
  * approving one has to clear the page it lands on — not the page it came from.
- * Listing them here rather than at each call site means adding a third gallery
- * is one edit instead of four.
+ * Listing them here rather than at each call site means adding a fourth
+ * gallery is one edit instead of several.
  */
 function revalidateGalleries(): void {
   revalidatePath("/admin");
-  revalidatePath("/photos");
-  revalidatePath("/artifacts");
+  for (const kind of PHOTO_KINDS) revalidatePath(`/${kind}`);
 }
 
 export async function login(_prev: LoginState, formData: FormData): Promise<LoginState> {
@@ -104,12 +104,11 @@ export async function setPhotoCaption(id: string, caption: string): Promise<void
 }
 
 /**
- * Move a photograph between the two galleries.
+ * Move a photograph between the three galleries.
  *
- * Submitters mark this themselves, and get it wrong in both directions — a
- * picture of the harpsichord filed as a photograph of Joe, a picture of Joe
- * standing beside it filed as an artifact. Neither is worth writing back to the
- * sender about; it's a one-click fix here.
+ * Submitters mark this themselves and sometimes get it wrong — a camping photo
+ * filed as Friends & Family, a gig shot filed as Camping. Not worth writing
+ * back to the sender about; it's a one-click fix here.
  */
 export async function setPhotoKind(id: string, kind: string): Promise<void> {
   if (!(await isAdmin())) throw new Error("Not authorised.");

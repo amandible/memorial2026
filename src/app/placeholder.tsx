@@ -21,7 +21,7 @@ export default function Placeholder({
       <div className="prose">{children}</div>
       <p className="contact-note">
         In the meantime, you can write to{" "}
-        <a href="mailto:contact@joeweisman.org">contact@joeweisman.org</a>.
+        <a href="mailto:contact@billmelanson.org">contact@billmelanson.org</a>.
       </p>
     </main>
   );

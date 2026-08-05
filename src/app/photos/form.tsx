@@ -10,10 +10,10 @@ import {
   type Submission,
   type FileSubmission,
 } from "./actions";
-import { ARTIFACTS_LABEL } from "@/lib/sections";
+import { PHOTO_KINDS, PHOTO_KIND_LABELS, type PhotoKind } from "@/lib/photo-kinds";
 import { parseYear } from "@/lib/year";
 
-type Kind = "photo" | "artifact";
+type Kind = PhotoKind;
 
 type Picked = {
   file: File;
@@ -102,7 +102,7 @@ async function uploadWithRetry(send: () => Promise<Response>, label: string): Pr
 
 export default function PhotoForm({
   siteKey,
-  defaultKind = "photo",
+  defaultKind = "friends-family",
 }: {
   siteKey?: string;
   defaultKind?: Kind;
@@ -188,7 +188,7 @@ export default function PhotoForm({
     );
     if (tooBig) {
       setError(
-        `"${tooBig.name}" is larger than ${isImageFile(tooBig) ? "25 MB" : "100 MB"}. Please send that one to contact@joeweisman.org instead.`,
+        `"${tooBig.name}" is larger than ${isImageFile(tooBig) ? "25 MB" : "100 MB"}. Please send that one to contact@billmelanson.org instead.`,
       );
       return;
     }
@@ -199,9 +199,10 @@ export default function PhotoForm({
         file: f,
         caption: "",
         year: "",
-        // A file that isn't a picture is an artifact by definition — there is no
-        // gallery it could go to — so the toggle isn't offered for those.
-        kind: isImageFile(f) ? defaultKind : ("artifact" as Kind),
+        // Non-image files never reach a gallery (see the note below the
+        // kind-choice fieldset), so this value is unused for them — it's only
+        // meaningful, and only shown, for images.
+        kind: defaultKind,
         isImage: isImageFile(f),
         preview: null,
         previewIsThumb: false,
@@ -420,7 +421,7 @@ export default function PhotoForm({
         // tsStatus picks the wording, it no longer decides whether to try.
         setError(
           tsStatus === "error"
-            ? "We couldn't load the security check — this usually means an ad blocker or privacy extension is active. Try turning it off for this site and reloading, or email the photos to contact@joeweisman.org instead. Your photos and captions are still here."
+            ? "We couldn't load the security check — this usually means an ad blocker or privacy extension is active. Try turning it off for this site and reloading, or email the photos to contact@billmelanson.org instead. Your photos and captions are still here."
             : "Please complete the verification below, then press Send again. Your photos and captions are still here.",
         );
         return;
@@ -507,7 +508,7 @@ export default function PhotoForm({
       if (done.length === 0 && doneFiles.length === 0) {
         resetTurnstile();
         setError(
-          `Those files couldn't be sent${failures.length ? ` — ${failures.join(", ")}` : ""}. Please try again, or email them to contact@joeweisman.org.`,
+          `Those files couldn't be sent${failures.length ? ` — ${failures.join(", ")}` : ""}. Please try again, or email them to contact@billmelanson.org.`,
         );
         return;
       }
@@ -540,7 +541,7 @@ export default function PhotoForm({
       setSaved(savedTotal);
       setSavedFiles(doneFiles.length);
       setSavedKinds(
-        Array.from(new Set(done.map((d) => (d.kind === "artifact" ? "artifact" : "photo")))),
+        Array.from(new Set(done.map((d) => d.kind).filter((k): k is Kind => Boolean(k)))),
       );
       setPicked([]);
     } catch (err) {
@@ -555,7 +556,7 @@ export default function PhotoForm({
         record: "while saving the photos — they may have uploaded already",
       }[stage];
       setError(
-        `Something went wrong ${where}. Please try again, or email them to contact@joeweisman.org.` +
+        `Something went wrong ${where}. Please try again, or email them to contact@billmelanson.org.` +
           (process.env.NODE_ENV === "development" ? ` [${detail}]` : ""),
       );
       resetTurnstile();
@@ -591,16 +592,11 @@ export default function PhotoForm({
         <button type="button" className="btn-quiet" onClick={() => setSaved(0)}>
           Send more
         </button>{" "}
-        {savedKinds.includes("photo") && (
-          <Link href="/photos" className="btn-quiet">
-            View the photographs
+        {PHOTO_KINDS.filter((k) => savedKinds.includes(k)).map((k) => (
+          <Link key={k} href={`/${k}`} className="btn-quiet">
+            View {PHOTO_KIND_LABELS[k].toLowerCase()}
           </Link>
-        )}{" "}
-        {savedKinds.includes("artifact") && (
-          <Link href="/artifacts" className="btn-quiet">
-            View {ARTIFACTS_LABEL.toLowerCase()}
-          </Link>
-        )}
+        ))}
       </div>
     );
   }
@@ -617,12 +613,10 @@ export default function PhotoForm({
       )}
 
       <section id="add" className="add-entry">
-        <h2>{defaultKind === "artifact" ? "Send something of his" : "Send your photographs"}</h2>
+        <h2>Send your photos</h2>
         <p className="muted-note">
-          Anything at all &mdash; the boat, the commune, a sauna he built, a
-          kitchen he improved. Pictures of things he made, marked, or kept go to{" "}
-          <Link href="/artifacts">{ARTIFACTS_LABEL.toLowerCase()}</Link>; mark
-          each one below. They&rsquo;ll appear once someone has looked at them.
+          Choose files below, and mark each one Friends &amp; Family, Camping, or
+          Gigs. They&rsquo;ll appear once someone has looked at them.
         </p>
 
         <form onSubmit={submit} className="form">
@@ -706,13 +700,8 @@ export default function PhotoForm({
                       the admin page can move it afterwards. */}
                   {p.isImage ? (
                     <fieldset className="kind-choice">
-                      <legend className="picked-caption-label">What is this?</legend>
-                      {(
-                        [
-                          ["photo", "Photograph of Bill"],
-                          ["artifact", "Something he made or owned"],
-                        ] as const
-                      ).map(([value, label]) => (
+                      <legend className="picked-caption-label">Which section?</legend>
+                      {PHOTO_KINDS.map((value) => (
                         <label key={value} className="kind-option">
                           <input
                             type="radio"
@@ -728,7 +717,7 @@ export default function PhotoForm({
                               )
                             }
                           />
-                          <span>{label}</span>
+                          <span>{PHOTO_KIND_LABELS[value]}</span>
                         </label>
                       ))}
                     </fieldset>
@@ -849,7 +838,7 @@ export default function PhotoForm({
                   Authenticating the form is taking longer than expected. Try
                   reloading the page — if the verification check still
                   doesn&rsquo;t appear, an ad blocker or privacy extension may be
-                  blocking it, or you can email the photos to contact@joeweisman.org
+                  blocking it, or you can email the photos to contact@billmelanson.org
                   instead.
                 </p>
               )}

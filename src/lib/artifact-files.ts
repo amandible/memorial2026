@@ -13,7 +13,7 @@ import { db } from "./db.ts";
  * way the recipes were.
  *
  * That is also the security position. Serving stranger-supplied files from
- * joeweisman.org would make an uploaded .html or .svg a stored cross-site
+ * billmelanson.org would make an uploaded .html or .svg a stored cross-site
  * scripting hole on our own origin, and no amount of extension filtering makes
  * that safe. Not serving them at all does.
  */

@@ -9,7 +9,7 @@ import { getObject } from "@/lib/r2";
  * this origin, so the headers do the work:
  *
  *   - application/octet-stream, never the type the uploader claimed. An .html or
- *     .svg served as its own type would run as script on joeweisman.org and read
+ *     .svg served as its own type would run as script on billmelanson.org and read
  *     the admin session cookie. As a binary blob it cannot.
  *   - Content-Disposition: attachment, so it is saved rather than rendered.
  *   - nosniff, because without it a browser may guess a type from the bytes and

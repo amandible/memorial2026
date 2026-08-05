@@ -23,7 +23,7 @@ export default function ExportButton({ count }: { count: number }) {
       const a = document.createElement("a");
       a.href = url;
       // Dated, because you will end up with several of these.
-      a.download = `joeweisman-mailing-list-${new Date().toISOString().slice(0, 10)}.csv`;
+      a.download = `billmelanson-mailing-list-${new Date().toISOString().slice(0, 10)}.csv`;
       document.body.appendChild(a);
       a.click();
       a.remove();

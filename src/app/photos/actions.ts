@@ -69,7 +69,7 @@ export async function requestUploads(
     return {
       ok: false,
       error:
-        "Sending files other than photographs isn't available just now. Please email it to contact@joeweisman.org.",
+        "Sending files other than photographs isn't available just now. Please email it to contact@billmelanson.org.",
     };
   }
   if (!Number.isInteger(count) || count < 0 || count > MAX_PER_SUBMISSION) {
@@ -85,7 +85,7 @@ export async function requestUploads(
   if (tooBig) {
     return {
       ok: false,
-      error: `"${tooBig.name}" is too large to send through the form. Please email it to contact@joeweisman.org.`,
+      error: `"${tooBig.name}" is too large to send through the form. Please email it to contact@billmelanson.org.`,
     };
   }
 
@@ -104,7 +104,7 @@ export async function requestUploads(
     if ((row?.n ?? 0) + count > HOURLY_LIMIT) {
       return {
         ok: false,
-        error: "That's a lot of photos in a short time. Please come back in a little while, or write to contact@joeweisman.org.",
+        error: "That's a lot of photos in a short time. Please come back in a little while, or write to contact@billmelanson.org.",
       };
     }
 

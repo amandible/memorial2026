@@ -64,13 +64,14 @@ describe("newStorageKey", () => {
 });
 
 describe("parseKind", () => {
-  test("only 'artifact' is artifact; everything else falls back to photo", () => {
-    assert.equal(parseKind("artifact"), "artifact");
-    assert.equal(parseKind("photo"), "photo");
-    // A typo, an injection attempt, or a missing field must not become a third
-    // value — the column has a check constraint and the insert would throw.
-    for (const junk of ["Artifact", "ARTIFACT", "", null, undefined, 0, {}, "'; drop table photos;--"]) {
-      assert.equal(parseKind(junk), "photo");
+  test("only a known kind passes through; everything else falls back to friends-family", () => {
+    assert.equal(parseKind("friends-family"), "friends-family");
+    assert.equal(parseKind("camping"), "camping");
+    assert.equal(parseKind("gigs"), "gigs");
+    // A typo, an injection attempt, or a missing field must not become a
+    // fourth value — the column has a check constraint and the insert would throw.
+    for (const junk of ["Gigs", "GIGS", "artifact", "photo", "", null, undefined, 0, {}, "'; drop table photos;--"]) {
+      assert.equal(parseKind(junk), "friends-family");
     }
   });
 });

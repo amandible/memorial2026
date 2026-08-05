@@ -8,7 +8,7 @@ import { createHmac, timingSafeEqual } from "node:crypto";
  * tests/admin-auth.test.mts.
  */
 
-const PAYLOAD = "joeweisman-admin-v1";
+const PAYLOAD = "billmelanson-admin-v1";
 
 /**
  * The value stored in the session cookie: an HMAC derived from the password,

@@ -1,20 +1,8 @@
 import { db } from "./db.ts";
+import type { PhotoKind } from "./photo-kinds.ts";
 
-/**
- * Which gallery a photograph belongs to.
- *
- * 'artifact' covers anything with his hand on it — built, annotated, or simply
- * his: the harpsichord, a shelving unit, an marked-up recipe, his block-print
- * handwriting. Everything else is 'photo'.
- */
-export type PhotoKind = "photo" | "artifact";
-
-export const PHOTO_KINDS: PhotoKind[] = ["photo", "artifact"];
-
-/** Narrow untrusted input to a kind, defaulting to the safer 'photo'. */
-export function parseKind(input: unknown): PhotoKind {
-  return input === "artifact" ? "artifact" : "photo";
-}
+export type { PhotoKind } from "./photo-kinds.ts";
+export { PHOTO_KINDS, PHOTO_KIND_LABELS, parseKind } from "./photo-kinds.ts";
 
 export type Photo = {
   id: string;

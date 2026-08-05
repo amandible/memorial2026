@@ -63,7 +63,7 @@ export async function signGuestbook(
       return {
         status: "error",
         message:
-          "That's several messages in a short time. Please wait a little while, or write to contact@joeweisman.org.",
+          "That's several messages in a short time. Please wait a little while, or write to contact@billmelanson.org.",
       };
     }
 
@@ -78,7 +78,7 @@ export async function signGuestbook(
     return {
       status: "error",
       message:
-        "Something went wrong saving that. Please try again, or write to contact@joeweisman.org.",
+        "Something went wrong saving that. Please try again, or write to contact@billmelanson.org.",
     };
   }
 

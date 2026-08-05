@@ -23,7 +23,7 @@ export default function SubscribePage() {
 
       <p className="contact-note">
         Would you rather just write to someone?{" "}
-        <a href="mailto:contact@joeweisman.org">contact@joeweisman.org</a>.
+        <a href="mailto:contact@billmelanson.org">contact@billmelanson.org</a>.
       </p>
     </main>
   );
