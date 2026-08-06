@@ -149,3 +149,33 @@ export async function notifyPhotoSubmission(details: {
     ].join("\n"),
   );
 }
+
+/**
+ * A typed memory (a setlist, lyrics, a written recollection) has been
+ * submitted — no photograph, no file, just text.
+ */
+export async function notifyTextMemory(details: {
+  submitter: string | null;
+  email: string | null;
+  title: string | null;
+  body: string;
+}): Promise<void> {
+  const { submitter, email, title, body } = details;
+  const who = submitter || "Someone";
+  const preview = body.length > 2000 ? `${body.slice(0, 2000)}\n[…]` : body;
+
+  await send(
+    `Text memory waiting: ${title || "untitled"} from ${who}`,
+    [
+      `${who} wrote a memory${title ? `: "${title}"` : ""}.`,
+      email ? `Their email: ${email}` : "No email given.",
+      "",
+      "----",
+      preview,
+      "----",
+      "",
+      "This is NOT public yet. Review it here:",
+      adminUrl(),
+    ].join("\n"),
+  );
+}

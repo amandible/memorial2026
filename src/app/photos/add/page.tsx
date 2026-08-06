@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import PhotoForm from "../form";
+import AddModeSwitch from "./mode-switch";
 import { imagesConfigured } from "@/lib/cf-images";
 import { parseKind } from "@/lib/photos";
 import { PHOTO_KIND_LABELS } from "@/lib/photo-kinds";
 
-export const metadata: Metadata = { title: "Add Photos" };
+export const metadata: Metadata = { title: "Add" };
 
 export default async function AddPhotosPage({
   searchParams,
@@ -27,24 +27,11 @@ export default async function AddPhotosPage({
         <Link href={`/${defaultKind}`}>&larr; Back to the gallery</Link>
       </p>
 
-      {/* Don't offer an upload form that cannot accept an upload. Without
-          credentials the submission would fail after the visitor had chosen
-          files and waited — say so up front instead. */}
-      {imagesConfigured() ? (
-        <PhotoForm
-          siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY}
-          defaultKind={defaultKind}
-        />
-      ) : (
-        <section id="add" className="add-entry">
-          <h2>Send your photos</h2>
-          <p className="prose">
-            Photo submissions aren&rsquo;t open quite yet. If you have pictures of
-            Bill, please start looking them out &mdash; or send them now to{" "}
-            <a href="mailto:contact@billmelanson.org">contact@billmelanson.org</a>.
-          </p>
-        </section>
-      )}
+      <AddModeSwitch
+        siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY}
+        defaultKind={defaultKind}
+        imagesConfigured={imagesConfigured()}
+      />
     </main>
   );
 }

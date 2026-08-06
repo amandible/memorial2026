@@ -40,7 +40,7 @@ export default async function PhotoCategoryPage({
 
       <div className="toolbar-row">
         <Link href={`/photos/add?kind=${kind}`} className="btn-primary">
-          Add Photos
+          Add to this section
         </Link>
       </div>
 
@@ -53,20 +53,21 @@ export default async function PhotoCategoryPage({
           Nothing here yet.{" "}
           {imagesConfigured() ? (
             <>
-              If you have a photo for this section,{" "}
+              If you have a photo or a memory for this section,{" "}
               <Link href={`/photos/add?kind=${kind}`}>please send it</Link> &mdash; it&rsquo;ll
               appear here.
             </>
           ) : (
-            <>There will be a way to add photos here shortly.</>
+            <>There will be a way to add things here shortly.</>
           )}
         </p>
       ) : (
         <Gallery
           photos={photos.map((p) => ({
             id: p.id,
-            thumb: thumbUrl(p.storage_ref),
-            full: imageUrl(p.storage_ref),
+            thumb: p.storage_ref ? thumbUrl(p.storage_ref) : null,
+            full: p.storage_ref ? imageUrl(p.storage_ref) : null,
+            bodyText: p.body_text,
             caption: p.caption,
             submitter: p.submitter,
             year: p.taken_year,

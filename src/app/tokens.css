@@ -382,6 +382,36 @@ body {
 }
 .mod-meta { color: var(--muted); font-size: .85rem; overflow-wrap: anywhere; }
 .mod-photo.is-rejected { opacity: .5; }
+
+/* A typed memory in the moderation grid: same box as a photo's thumbnail, but
+   text instead of an <img>, clamped so one very long memory doesn't dwarf
+   every photo around it. */
+.mod-text-preview {
+  margin: 0;
+  padding: var(--s2);
+  min-height: 8rem;
+  background: var(--bg-sunk);
+  white-space: pre-line;
+  overflow-wrap: break-word;
+  font-size: var(--size-small);
+  display: -webkit-box;
+  -webkit-line-clamp: 6;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.mod-text-body { white-space: pre-line; overflow-wrap: break-word; }
+.mod-text-input {
+  width: 100%;
+  flex-basis: 100%;
+  font-family: var(--body);
+  font-size: var(--size-small);
+  color: var(--text);
+  background: var(--bg-sunk);
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+  padding: .3rem .5rem;
+  resize: vertical;
+}
 .photo-actions { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .6rem; }
 
 .tag-pending { color: var(--todo); }
@@ -489,6 +519,34 @@ mark.todo {
 .gallery-item:hover { border-color: var(--muted); }
 .gallery-item:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
 
+/* A typed memory's tile: no image, so the button needs its own size and a
+   visibly different treatment — a quote-like card, not a blank box standing
+   in for a missing photo. */
+.gallery-text-tile {
+  min-height: 12rem;
+  padding: var(--s3);
+  display: flex;
+  flex-direction: column;
+  gap: .5rem;
+  text-align: left;
+  white-space: pre-line;
+  overflow-wrap: break-word;
+  cursor: inherit;
+}
+.gallery-text-title {
+  font-family: var(--display);
+  font-size: 1.05rem;
+  color: var(--text);
+}
+.gallery-text-preview {
+  font-size: var(--size-small);
+  color: var(--muted);
+  display: -webkit-box;
+  -webkit-line-clamp: 6;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
 .gallery-caption {
   color: var(--muted);
   font-size: var(--size-small);
@@ -531,6 +589,16 @@ mark.todo {
   width: 100%;
   max-height: min(82vh, calc(96vh - 8rem));
   object-fit: contain;
+}
+/* A typed memory in the lightbox: the image's box, but scrollable text rather
+   than an object-fit image — a long setlist or a full lyric sheet shouldn't
+   get cut off the way an overlong caption never does either. */
+.lightbox-text {
+  max-height: min(82vh, calc(96vh - 8rem));
+  overflow-y: auto;
+  padding: var(--s3);
+  background: var(--bg-sunk);
+  font-size: 1.05rem;
 }
 .lightbox-bar {
   display: flex; align-items: center; justify-content: space-between;

@@ -103,6 +103,17 @@ export async function setPhotoCaption(id: string, caption: string): Promise<void
   revalidateGalleries();
 }
 
+const MAX_BODY_TEXT = 5000;
+
+/** Edit a typed memory's text. */
+export async function setPhotoBodyText(id: string, bodyText: string): Promise<void> {
+  if (!(await isAdmin())) throw new Error("Not authorised.");
+
+  const trimmed = bodyText.trim().slice(0, MAX_BODY_TEXT);
+  await db()`update photos set body_text = ${trimmed || null} where id = ${id}::uuid`;
+  revalidateGalleries();
+}
+
 /**
  * Move a photograph between the three galleries.
  *
@@ -144,11 +155,12 @@ export async function purgePhoto(id: string): Promise<void> {
 
   const [row] = (await db()`
     select storage_ref, archive_key from photos where id = ${id}::uuid and status = 'rejected'
-  `) as { storage_ref: string; archive_key: string | null }[];
+  `) as { storage_ref: string | null; archive_key: string | null }[];
   // Only rejected photos can be purged, so an approved one can't go by mistake.
   if (!row) throw new Error("Only a rejected photo can be deleted.");
 
-  await deleteImage(row.storage_ref);
+  // A typed memory has no image at all — nothing to delete from Cloudflare Images.
+  if (row.storage_ref) await deleteImage(row.storage_ref);
   // "Delete for good" has to mean the archive too, or a purge would leave a
   // copy behind in R2 that nobody knows about.
   if (row.archive_key) await deleteObject(row.archive_key);

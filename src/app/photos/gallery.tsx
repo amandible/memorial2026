@@ -4,10 +4,12 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 export type GalleryPhoto = {
   id: string;
-  /** Grid-sized. Big enough to stay crisp at 2x in a ~380px tile. */
-  thumb: string;
-  /** Full size, only fetched when a photo is actually enlarged. */
-  full: string;
+  /** Grid-sized. Big enough to stay crisp at 2x in a ~380px tile. Null for a typed memory — there is no image. */
+  thumb: string | null;
+  /** Full size, only fetched when a photo is actually enlarged. Null for a typed memory. */
+  full: string | null;
+  /** The written memory itself, for entries with no photo at all. */
+  bodyText: string | null;
   caption: string | null;
   submitter: string | null;
   year: number | null;
@@ -93,10 +95,25 @@ export default function Gallery({ photos }: { photos: GalleryPhoto[] }) {
                 openerRef.current = e.currentTarget;
                 setOpenIndex(i);
               }}
-              aria-label={p.caption ? `Enlarge: ${p.caption}` : "Enlarge photograph"}
+              aria-label={
+                p.thumb
+                  ? p.caption
+                    ? `Enlarge: ${p.caption}`
+                    : "Enlarge photograph"
+                  : p.caption
+                    ? `Read: ${p.caption}`
+                    : "Read the full memory"
+              }
             >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={p.thumb} alt={p.caption ?? "A photograph of Bill Melanson"} loading="lazy" decoding="async" />
+              {p.thumb ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={p.thumb} alt={p.caption ?? "A photograph of Bill Melanson"} loading="lazy" decoding="async" />
+              ) : (
+                <div className="gallery-text-tile">
+                  {p.caption && <span className="gallery-text-title">{p.caption}</span>}
+                  <span className="gallery-text-preview">{p.bodyText}</span>
+                </div>
+              )}
             </button>
             {(() => {
               const yr = yearWorthShowing(p.year, p.caption);
@@ -130,8 +147,12 @@ export default function Gallery({ photos }: { photos: GalleryPhoto[] }) {
       >
         {current && (
           <div className="lightbox-inner">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={current.full} alt={current.caption ?? "A photograph of Bill Melanson"} />
+            {current.full ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={current.full} alt={current.caption ?? "A photograph of Bill Melanson"} />
+            ) : (
+              <p className="entry-message lightbox-text">{current.bodyText}</p>
+            )}
 
             <div className="lightbox-bar">
               <button

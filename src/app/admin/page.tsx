@@ -8,6 +8,7 @@ import LoginForm from "./login-form";
 import EntryActions from "./entry-actions";
 import PhotoActions from "./photo-actions";
 import CaptionEditor from "./caption-editor";
+import BodyTextEditor from "./body-text-editor";
 import YearEditor from "./year-editor";
 import KindEditor from "./kind-editor";
 import FileActions from "./file-actions";
@@ -87,7 +88,7 @@ export default async function AdminPage() {
       (select count(*)::int from photos where status = 'pending') as photos_pending,
       (select count(*)::int from photos where status = 'approved') as photos_approved,
       (select count(*)::int from photos
-        where status = 'approved' and archived_at is null) as photos_unarchived
+        where status = 'approved' and archived_at is null and storage_ref is not null) as photos_unarchived
   `) as {
     contacts: number;
     published: number;
@@ -101,14 +102,15 @@ export default async function AdminPage() {
   // group, matching the public gallery. Oldest-first buried a photograph that
   // had just arrived at the bottom of a long page.
   const photos = (await db()`
-    select id, storage_ref, caption, submitter, email, status, created_at, archived_at,
+    select id, storage_ref, body_text, caption, submitter, email, status, created_at, archived_at,
            taken_year, taken_source, exif_taken_at, kind, width, height
     from photos
     order by (status = 'pending') desc, created_at desc
     limit 200
   `) as {
     id: string;
-    storage_ref: string;
+    storage_ref: string | null;
+    body_text: string | null;
     caption: string | null;
     submitter: string | null;
     email: string | null;
@@ -193,26 +195,35 @@ export default async function AdminPage() {
         <div className="mod-grid">
           {photos.map((p) => (
             <figure key={p.id} className={`mod-photo is-${p.status}`}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={thumbUrl(p.storage_ref)} alt={p.caption ?? "Submitted photograph"} loading="lazy" />
+              {p.storage_ref ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={thumbUrl(p.storage_ref)} alt={p.caption ?? "Submitted photograph"} loading="lazy" />
+              ) : (
+                <p className="mod-text-preview">{p.body_text}</p>
+              )}
               <figcaption>
                 <span className={`tag tag-${p.status}`}>{p.status}</span>
-                {p.status === "approved" && !p.archived_at && (
+                {p.status === "approved" && !p.archived_at && p.storage_ref && (
                   <span className="tag tag-pending">not backed up</span>
                 )}
                 <CaptionEditor id={p.id} caption={p.caption} />
+                {p.body_text !== null && <BodyTextEditor id={p.id} bodyText={p.body_text} />}
                 <KindEditor id={p.id} kind={p.kind} />
-                <YearEditor
-                  id={p.id}
-                  year={p.taken_year}
-                  source={p.taken_source}
-                  exifTakenAt={p.exif_taken_at}
-                />
+                {p.storage_ref && (
+                  <YearEditor
+                    id={p.id}
+                    year={p.taken_year}
+                    source={p.taken_source}
+                    exifTakenAt={p.exif_taken_at}
+                  />
+                )}
                 <span className="mod-meta">
                   {p.submitter ?? "anonymous"}
                   {p.email && <> &middot; {p.email}</>}
                 </span>
-                <span className="mod-meta">{describeResolution(p.width, p.height)}</span>
+                {p.storage_ref && (
+                  <span className="mod-meta">{describeResolution(p.width, p.height)}</span>
+                )}
               </figcaption>
               <PhotoActions id={p.id} status={p.status} />
             </figure>

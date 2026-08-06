@@ -65,11 +65,13 @@ export async function archivePhoto(rowId: string): Promise<ArchiveResult> {
     select id, storage_ref, archived_at, taken_year, taken_source
     from photos where id = ${rowId}::uuid
   `) as {
-    id: string; storage_ref: string; archived_at: Date | null;
+    id: string; storage_ref: string | null; archived_at: Date | null;
     taken_year: number | null; taken_source: string | null;
   }[];
 
   if (!row) return { status: "skipped", reason: "no such photo" };
+  // A typed memory has no image at all — nothing here for this to copy.
+  if (!row.storage_ref) return { status: "skipped", reason: "no image to archive" };
   if (row.archived_at) return { status: "skipped", reason: "already archived" };
 
   const { body, type } = await fetchOriginal(row.storage_ref);
@@ -128,7 +130,7 @@ export async function archivePhotoQuietly(rowId: string): Promise<void> {
 export async function unarchivedPhotos(): Promise<{ id: string; storage_ref: string }[]> {
   return (await db()`
     select id, storage_ref from photos
-    where status = 'approved' and archived_at is null
+    where status = 'approved' and archived_at is null and storage_ref is not null
     order by created_at
   `) as { id: string; storage_ref: string }[];
 }
