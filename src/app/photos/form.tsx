@@ -615,8 +615,8 @@ export default function PhotoForm({
       <section id="add" className="add-entry">
         <h2>Send your photos</h2>
         <p className="muted-note">
-          Choose files below, and mark each one Friends &amp; Family, Camping, or
-          Gigs. They&rsquo;ll appear once someone has looked at them.
+          Choose files below, and mark each one Friends &amp; Family, Camping, 
+          Gigs or Setlists. They&rsquo;ll appear once someone has looked at them.
         </p>
 
         <form onSubmit={submit} className="form">

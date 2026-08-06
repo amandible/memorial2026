@@ -306,6 +306,24 @@ body {
 }
 .toolbar-row .muted-note { margin: 0; }
 
+/* Two buttons that pick one of two modes, touching rather than spread apart
+   like .toolbar-row's button-plus-note layout — the adjacency itself is what
+   reads as "choose one of these two", not the individual buttons. */
+.mode-tabs { display: inline-flex; margin-top: var(--s4); }
+.mode-tabs button {
+  border-radius: 0;
+  margin-left: -1px;
+}
+.mode-tabs button:first-child {
+  margin-left: 0;
+  border-top-left-radius: 2px;
+  border-bottom-left-radius: 2px;
+}
+.mode-tabs button:last-child {
+  border-top-right-radius: 2px;
+  border-bottom-right-radius: 2px;
+}
+
 /* Photo submission form */
 .picked { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--s3); }
 .picked li { border: 1px solid var(--rule); border-radius: 2px; padding: var(--s2); }

@@ -27,7 +27,7 @@ export default function AddModeSwitch({
 
   return (
     <>
-      <div className="toolbar-row" role="tablist" aria-label="How to add this">
+      <div className="mode-tabs" role="tablist" aria-label="How to add this">
         <button
           type="button"
           role="tab"
@@ -44,7 +44,7 @@ export default function AddModeSwitch({
           aria-selected={mode === "text"}
           onClick={() => setMode("text")}
         >
-          Write a memory instead
+          Send text instead
         </button>
       </div>
 

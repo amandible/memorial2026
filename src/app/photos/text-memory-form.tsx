@@ -146,7 +146,7 @@ export default function TextMemoryForm({
           It will appear once someone has had a look at it.
         </p>
         <button type="button" className="btn-quiet" onClick={() => setSaved(false)}>
-          Write another
+          Send another
         </button>{" "}
         <Link href={`/${kind}`} className="btn-quiet">
           View {PHOTO_KIND_LABELS[kind].toLowerCase()}
@@ -167,7 +167,7 @@ export default function TextMemoryForm({
       )}
 
       <section id="add-text" className="add-entry">
-        <h2>Write a memory</h2>
+        <h2>Send text</h2>
         <p className="muted-note">
           A setlist, some lyrics, or anything else worth writing down instead
           of sending a photo of it.
