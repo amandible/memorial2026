@@ -1,11 +1,12 @@
 ---
-title: "A Celebration of Bill's Life"
+title: "Meeting to commemorate Bill's Life"
 ---
 
-Services are being arranged. Details will be posted here as soon as they are
-settled, along with anything useful about parking and getting there.
+The funeral service will be August 18th, from 4-8pm at Paul C. Rogers & Sons
+Funeral Home, 35 Green St. Newburyport, MA 01950. A celebration of life will
+also be planned for a future date.
 
-If you would like to be told when the details are fixed, you can
+If you would like to be told when more details are fixed, you can
 [leave your email address](/subscribe). It will only be used for news about the
 memorial — a handful of messages, and nothing after that.
 
