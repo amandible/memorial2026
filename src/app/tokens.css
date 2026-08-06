@@ -158,13 +158,10 @@ body {
 .wordmark {
   font-family: var(--display);
   font-size: 1.35rem;
-  /* Own line on narrow screens so the sections don't wrap around the name. */
+  /* Own line at every width, centered above the menu — matches the centered
+     hero photo below rather than splitting name and menu to opposite edges. */
   flex-basis: 100%;
   text-align: center;
-}
-@media (min-width: 34rem) {
-  .sitenav-inner { justify-content: space-between; }
-  .wordmark { flex-basis: auto; text-align: left; }
 }
 
 .skip {
