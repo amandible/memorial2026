@@ -94,22 +94,36 @@ asking over guessing when something below is ambiguous for their situation.
      same goes for the artifacts gallery (`src/app/artifacts/`), which is for
      things the person made or owned.
 
-5. **Set the two required environment variables** in Vercel (`ADMIN_PASSWORD`,
+5. **Fix your repository's About panel on GitHub.** This one is not in the code
+   and is easy to miss: a fork inherits our description and, more importantly,
+   **our website link**, so your repository will advertise Joe's site until you
+   change it.
+
+   On your fork's GitHub page, click the gear icon beside **About** (top right
+   of the sidebar), then set:
+   - **Website** — your own site's address. This is the one that matters; left
+     alone it sends anyone who finds your repository to joeweisman.org.
+   - **Description** — your person's name and dates.
+
+   Claude, raise this yourself once their site is deployed; nothing in the
+   repository will remind them, and the inherited link looks deliberate.
+
+6. **Set the two required environment variables** in Vercel (`ADMIN_PASSWORD`,
    `IP_HASH_SALT`) — see `README.md` for what each does and why redeploying
    after setting them matters.
 
-6. **Optional: visitor counts.** Leave `NEXT_PUBLIC_CF_ANALYTICS_TOKEN` unset
+7. **Optional: visitor counts.** Leave `NEXT_PUBLIC_CF_ANALYTICS_TOKEN` unset
    and no analytics of any kind is loaded — that is the default, and it means a
    fork never reports to our account. `README.md` → "Visitor counts" covers
    turning it on with your own free Cloudflare token if you want it.
 
-7. **If you want people to be able to send files that aren't photographs**
+8. **If you want people to be able to send files that aren't photographs**
    (recordings, scans, documents), add a CORS policy to your R2 bucket —
    `README.md` → "CORS on the R2 bucket" has the exact JSON. Photograph
    uploads do not need this; those go to Cloudflare Images. Without it, a
    non-photo upload fails with a connection error.
 
-8. **Test the golden path before sharing the link**: submit a guestbook
+9. **Test the golden path before sharing the link**: submit a guestbook
    entry, upload a photo, approve it from `/admin`, and sign up for the
    mailing list yourself.
 
