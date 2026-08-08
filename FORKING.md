@@ -83,7 +83,15 @@ asking over guessing when something below is ambiguous for their situation.
      (`XXXX`) until you have real dates, they only warn, never break a
      build.
    - `public/portrait-hero.jpg` and `public/og.jpg` — the portrait and the
-     social-share image (1200×630).
+     social-share image (1200×630). The share image is the one people see
+     when the link is posted to Facebook, so it is worth getting right.
+   - `src/app/icon.png` (512×512) and `src/app/apple-icon.png` (180×180) —
+     the little picture in the browser tab, and the one iPhones use when
+     somebody saves the site to their home screen. Ours are of Joe. Replace
+     both with your own, keeping the filenames and roughly the sizes: Next
+     finds them by name, so there is no code to change and no `favicon.ico`
+     to worry about. Easy to forget, and the result is your person's site
+     showing a stranger's face on the tab.
    - `src/app/tokens.css` — colors, if you want a different palette. Check
      contrast in both light and dark mode before committing to one — see the
      note in `AGENTS.md`.
