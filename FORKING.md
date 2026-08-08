@@ -87,11 +87,15 @@ asking over guessing when something below is ambiguous for their situation.
      when the link is posted to Facebook, so it is worth getting right.
    - `src/app/icon.png` (512×512) and `src/app/apple-icon.png` (180×180) —
      the little picture in the browser tab, and the one iPhones use when
-     somebody saves the site to their home screen. Ours are of Joe. Replace
-     both with your own, keeping the filenames and roughly the sizes: Next
-     finds them by name, so there is no code to change and no `favicon.ico`
-     to worry about. Easy to forget, and the result is your person's site
-     showing a stranger's face on the tab.
+     somebody saves the site to their home screen. Both are Joe's initials,
+     **JW**, set in the site's display serif, cream on the dark background.
+     Swap the letters for your person's and replace both files, keeping the
+     filenames and roughly those sizes: Next finds them by name, so there is
+     no code to change and no `favicon.ico` involved.
+
+     Worth doing even though it is small. Initials look deliberate rather
+     than left over, so nobody thinks to mention that the tab on your
+     person's site still says someone else's name.
    - `src/app/tokens.css` — colors, if you want a different palette. Check
      contrast in both light and dark mode before committing to one — see the
      note in `AGENTS.md`.
