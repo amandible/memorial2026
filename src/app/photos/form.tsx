@@ -243,7 +243,7 @@ export default function PhotoForm({
       return;
     }
     if (unique.filter((p) => !p.isImage).length > MAX_OTHER_FILES) {
-      setError(`Please send up to ${MAX_OTHER_FILES} files other than photographs at a time.`);
+      setError(`Please send up to ${MAX_OTHER_FILES} files at a time.`);
       return;
     }
     setPicked(unique);
@@ -664,7 +664,8 @@ export default function PhotoForm({
               }}
             />
             <span className="muted-note">
-              Up to {MAX_FILES} photographs at a time, 25 MB each &mdash; straight off
+              Up to {MAX_FILES}{" "}
+              photographs at a time, 25 MB each &mdash; straight off
               a phone is fine. Other kinds of file are welcome too: recordings,
               scans, letters, documents, up to {MAX_OTHER_FILES} at a time and 100 MB
               each. Those go into the family archive rather than onto the site.
