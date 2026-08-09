@@ -67,11 +67,12 @@ describe("parseKind", () => {
   test("only a known kind passes through; everything else falls back to friends-family", () => {
     assert.equal(parseKind("friends-family"), "friends-family");
     assert.equal(parseKind("camping"), "camping");
-    assert.equal(parseKind("gigs"), "gigs");
     assert.equal(parseKind("setlists"), "setlists");
-    // A typo, an injection attempt, or a missing field must not become a
-    // fourth value — the column has a check constraint and the insert would throw.
-    for (const junk of ["Gigs", "GIGS", "artifact", "photo", "", null, undefined, 0, {}, "'; drop table photos;--"]) {
+    assert.equal(parseKind("music"), "music");
+    // A typo, an injection attempt, a retired kind (gigs, folded into music),
+    // or a missing field must not become a fifth value — the column has a
+    // check constraint and the insert would throw.
+    for (const junk of ["gigs", "Gigs", "GIGS", "artifact", "photo", "", null, undefined, 0, {}, "'; drop table photos;--"]) {
       assert.equal(parseKind(junk), "friends-family");
     }
   });
