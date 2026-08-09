@@ -180,9 +180,17 @@ export default function TextMemoryForm({
         <p className="muted-note">
           It will appear once someone has had a look at it.
         </p>
-        <button type="button" className="btn-quiet" onClick={() => setSaved(false)}>
+        {/* A link that reloads the page, not a button that resets local state.
+            Succeeding unmounts the form, which detaches the div the Turnstile
+            widget was rendered into — this component's own widgetId ref never
+            gets cleared (nothing here unmounts to run that cleanup), so a
+            second render() call would just silently no-op against a gone
+            widget. Reloading is what actually gets a working widget back;
+            see NEEDS_FULL_LOAD in lib/sections.ts for the same fix applied to
+            cross-page navigation. */}
+        <a href={`/photos/add?kind=${kind}`} className="btn-quiet">
           Send another
-        </button>{" "}
+        </a>{" "}
         <Link href={`/${kind}`} className="btn-quiet">
           View {PHOTO_KIND_LABELS[kind].toLowerCase()}
         </Link>

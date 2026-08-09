@@ -36,9 +36,11 @@ export default async function GuestbookPage({
 
       {page === 0 && (
         <p className="jump-note">
-          <Link href="/guestbook/add" className="btn-primary">
+          {/* Plain anchor, not Link: the target renders a Turnstile widget and a
+              client-side navigation leaves it unrendered. See needsFullLoad. */}
+          <a href="/guestbook/add" className="btn-primary">
             Leave a message
-          </Link>
+          </a>
         </p>
       )}
 

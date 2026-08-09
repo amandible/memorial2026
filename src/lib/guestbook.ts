@@ -47,3 +47,25 @@ export async function recentCountForIp(ipHash: string | null): Promise<number> {
 export function formatDate(d: Date): string {
   return d.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
 }
+
+/**
+ * Date and time, for the admin diagnostics.
+ *
+ * A bare date is right for a guestbook entry and useless for a fault report:
+ * the question there is always "is this the attempt someone just told me about",
+ * which needs the time of day.
+ *
+ * Pinned to Eastern and labelled with the zone. The admin page renders on the
+ * server, which is UTC on Vercel, so an unlabelled timestamp would silently be
+ * four or five hours off the wall clock of the person reading it.
+ */
+export function formatDateTime(d: Date): string {
+  return d.toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    timeZone: "America/New_York",
+    timeZoneName: "short",
+  });
+}

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { SECTIONS } from "@/lib/sections";
+import { SECTIONS, needsFullLoad } from "@/lib/sections";
 
 export default function Nav() {
   const pathname = usePathname();
@@ -21,6 +21,9 @@ export default function Nav() {
                 {/* The current section is not a link to itself — it reads as a label. */}
                 {current ? (
                   <span aria-current="page">{label}</span>
+                ) : needsFullLoad(href) ? (
+                  // Plain anchor on purpose — see needsFullLoad in lib/sections.
+                  <a href={href}>{label}</a>
                 ) : (
                   <Link href={href}>{label}</Link>
                 )}

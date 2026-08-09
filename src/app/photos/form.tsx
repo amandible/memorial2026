@@ -15,12 +15,6 @@ import { parseYear } from "@/lib/year";
 
 type Kind = PhotoKind;
 
-type TurnstileGlobal = {
-  render: (container: HTMLElement, options: Record<string, unknown>) => string;
-  remove: (widgetId: string) => void;
-  reset: (widgetId?: string) => void;
-};
-
 type Picked = {
   file: File;
   caption: string;
@@ -42,7 +36,18 @@ type Picked = {
 
 const MAX_FILES = 12;
 const MAX_OTHER_FILES = 6;
-const MAX_IMAGE_BYTES = 25 * 1024 * 1024;
+/**
+ * Cloudflare Images refuses anything over 10 MB, so this has to match theirs.
+ *
+ * It used to say 25 MB, which meant a photograph between the two limits passed
+ * our check, uploaded, and was rejected at the far end — the sender got
+ * "IMG_4032.jpeg (413)" after waiting through the upload, with no idea what to
+ * do about it. Better to say so before they wait.
+ *
+ * Their other documented limits are 12,000 px on a side and 100 megapixels;
+ * nothing a camera produces comes near those, so only size is checked here.
+ */
+const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 const MAX_OTHER_BYTES = 100 * 1024 * 1024;
 
 /**
@@ -72,6 +77,36 @@ async function exifLite() {
     parse: (f: Blob, opts?: unknown) => Promise<Record<string, unknown> | undefined>;
     thumbnailUrl: (f: Blob) => Promise<string | undefined>;
   };
+}
+
+/**
+ * Tell the server a submission failed in the browser.
+ *
+ * Everything that has gone wrong with this form went wrong on someone else's
+ * machine, where nothing we can read reaches. Vercel's free tier keeps runtime
+ * logs for an hour, so even the server half is gone by the time anyone reports
+ * it. Best effort and deliberately silent: this must never be the reason a
+ * submission fails.
+ *
+ * Note what this cannot see. It is JavaScript, so it only reports failures in a
+ * page that is running ours — if hydration never completes, nothing here fires,
+ * and that is one of the shapes currently under suspicion.
+ */
+async function reportClientFailure(info: {
+  stage: string;
+  detail: string;
+  files: number;
+}): Promise<void> {
+  try {
+    await fetch("/api/upload-trouble", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(info),
+      keepalive: true,
+    });
+  } catch {
+    // Reporting a failure must not create one.
+  }
 }
 
 type UploadOutcome =
@@ -129,9 +164,10 @@ export default function PhotoForm({
   const [tsStatus, setTsStatus] = useState<"loading" | "ready" | "error">("loading");
   const fileInput = useRef<HTMLInputElement>(null);
   const turnstileBox = useRef<HTMLDivElement>(null);
-  const widgetId = useRef<string | null>(null);
   /** Every object URL handed out, so none leaks when the page goes away. */
   const objectUrls = useRef<Set<string>>(new Set());
+  /** Only ever attempt to re-render the widget once per page. */
+  const recoveryTried = useRef(false);
 
   useEffect(() => {
     const urls = objectUrls.current;
@@ -141,20 +177,19 @@ export default function PhotoForm({
     };
   }, []);
 
-  /**
-   * Explicit rendering, not the implicit class="cf-turnstile" auto-scan.
-   *
-   * The scan only runs once, when the Turnstile script first parses the
-   * page. That's fine as long as this is the only widget ever mounted — but
-   * since the add-mode toggle can mount PhotoForm *after* TextMemoryForm or
-   * MusicUploadForm already loaded the script (switching back to "Send a
-   * photo"), window.turnstile being truthy only proves the *script* loaded,
-   * not that *this* container has a widget. Checking scriptLoaded as a
-   * proxy for "ready" was correct back when this was the only form on the
-   * page; the add-mode toggle broke that assumption. Rendering explicitly
-   * the moment a container is available is the only way this reliably
-   * shows anything regardless of tab order.
-   */
+  // Implicit rendering gives no event for "the widget appeared" — Cloudflare's
+  // script just scans the DOM once it loads. Polling the container for the
+  // iframe it injects is the only way to know the empty box isn't permanent.
+  //
+  // Safe to rely on implicit scanning here specifically because PhotoForm is
+  // always the *default* tab of the add-mode toggle (mounted synchronously on
+  // first paint) and /photos/add is in sections.ts's NEEDS_FULL_LOAD — so a
+  // full page load always precedes this, and Turnstile's one-time scan always
+  // finds this container. TextMemoryForm and MusicUploadForm can't make that
+  // assumption (they only mount when a visitor switches tabs mid-session, no
+  // navigation involved) and render explicitly instead — see the comment on
+  // each. If tryRenderWidget's fallback below ever fails in practice, that's
+  // the sign this assumption has stopped holding.
   useEffect(() => {
     if (!siteKey) return;
     let cancelled = false;
@@ -163,19 +198,22 @@ export default function PhotoForm({
     function tick() {
       if (cancelled) return;
 
-      const w = (window as { turnstile?: TurnstileGlobal }).turnstile;
-      if (w && turnstileBox.current && !widgetId.current) {
-        widgetId.current = w.render(turnstileBox.current, {
-          sitekey: siteKey,
-          action: "turnstile-spin-v2",
-          "refresh-expired": "auto",
-        });
-      }
-
+      // Detect the *script*, not the widget. Looking for an iframe inside the
+      // container was wrong twice over: Turnstile renders into a shadow root,
+      // so querySelector never finds one, and a visibly working widget showing
+      // "Success!" still reported "taking longer than expected".
+      //
+      // The only thing this warning is really about is whether an extension
+      // blocked challenges.cloudflare.com, and that is exactly what the absence
+      // of window.turnstile means. If the script is there, the check works —
+      // whether the widget has finished is not our business.
+      const scriptLoaded =
+        typeof (window as { turnstile?: unknown }).turnstile !== "undefined";
       const solved = Boolean(readToken());
+      const hasWidget = Boolean(turnstileBox.current?.firstElementChild);
 
       const next: typeof tsStatus =
-        widgetId.current || solved
+        scriptLoaded || solved || hasWidget
           ? "ready"
           : Date.now() - start > 20_000
             ? "error"
@@ -190,15 +228,6 @@ export default function PhotoForm({
     tick();
     return () => {
       cancelled = true;
-      const w = (window as { turnstile?: TurnstileGlobal }).turnstile;
-      if (widgetId.current && w) {
-        try {
-          w.remove(widgetId.current);
-        } catch (e) {
-          console.warn("Turnstile remove failed (widget already gone):", e);
-        }
-        widgetId.current = null;
-      }
     };
   }, [siteKey]);
 
@@ -212,7 +241,9 @@ export default function PhotoForm({
     );
     if (tooBig) {
       setError(
-        `"${tooBig.name}" is larger than ${isImageFile(tooBig) ? "25 MB" : "100 MB"}. Please send that one to contact@billmelanson.org instead.`,
+        isImageFile(tooBig)
+          ? `"${tooBig.name}" is ${(tooBig.size / 1048576).toFixed(0)} MB, and our image service can't take anything over 10 MB. Please email that one to contact@billmelanson.org — we'd still very much like to have it, and we'll resize it at this end.`
+          : `"${tooBig.name}" is larger than 100 MB. Please email that one to contact@billmelanson.org instead.`,
       );
       return;
     }
@@ -364,8 +395,7 @@ export default function PhotoForm({
     // That turned a clear error into the generic catch-all. Never let cleanup
     // become the reported failure.
     try {
-      const w = (window as { turnstile?: TurnstileGlobal }).turnstile;
-      if (widgetId.current) w?.reset(widgetId.current);
+      (window as { turnstile?: { reset: () => void } }).turnstile?.reset();
     } catch (e) {
       console.warn("Turnstile reset failed (widget already gone):", e);
     }
@@ -373,9 +403,47 @@ export default function PhotoForm({
 
   function readToken(): string | null {
     return (
-      (turnstileBox.current?.querySelector('[name="cf-turnstile-response"]') as HTMLInputElement | null)
+      (document.querySelector('[name="cf-turnstile-response"]') as HTMLInputElement | null)
         ?.value || null
     );
+  }
+
+  /**
+   * Last resort: put a widget into the container ourselves.
+   *
+   * When no token arrives it is nearly always because the container is empty —
+   * Cloudflare's script scans for it once, on load, and anything that remounts
+   * the container afterwards leaves it unscanned forever. A reload fixes that,
+   * but it also discards every file and caption the person has just entered,
+   * which is a miserable thing to ask for after twelve of them.
+   *
+   * Rendering into the container directly costs them nothing. Only attempted
+   * after the wait has already failed, so the worst case is the state we were
+   * in anyway: if this throws — including because a widget is in fact already
+   * there — it is caught and the advice falls back to reloading.
+   *
+   * Only `sitekey` and `action` are passed. An earlier attempt to drive this API
+   * passed seven callbacks without checking that render() accepts them, threw,
+   * and left an empty box with no error. Both of these are documented and
+   * verified: action allows alphanumerics, underscore and hyphen, up to 32.
+   */
+  async function tryRenderWidget(): Promise<boolean> {
+    if (!siteKey || !turnstileBox.current) return false;
+    const api = (window as unknown as {
+      turnstile?: { render?: (el: HTMLElement, o: Record<string, unknown>) => string };
+    }).turnstile;
+    if (typeof api?.render !== "function") return false;
+
+    try {
+      api.render(turnstileBox.current, {
+        sitekey: siteKey,
+        action: "turnstile-spin-v2",
+      });
+      return true;
+    } catch (e) {
+      console.warn("Could not render a replacement Turnstile widget:", e);
+      return false;
+    }
   }
 
   /**
@@ -427,6 +495,20 @@ export default function PhotoForm({
       let token = readToken();
 
       if (!token) {
+        // Wait. Do NOT reset first.
+        //
+        // Resetting here threw away whatever the widget was doing and started a
+        // fresh challenge, so the wait below ran against a widget that had just
+        // been put back to needing another click — and pressing Send again did
+        // the same thing again. Someone reported exactly that: told to complete
+        // the verification and press Send, did, and it made no difference.
+        //
+        // Nothing needs the reset. Tokens last 300 seconds and this form takes
+        // longer than that to fill in, but `data-refresh-expired="auto"` on the
+        // widget is Cloudflare's default and renews an expired one by itself;
+        // waiting is all that's required to pick the new one up. A widget that
+        // errored retries on its own too, every 8 seconds by default.
+        //
         // Always wait, whatever the passive poll thinks. An earlier version
         // bailed immediately when tsStatus was "error" — but that status only
         // means "hasn't appeared yet", not "never will", and a slow widget that
@@ -436,19 +518,48 @@ export default function PhotoForm({
         // Waiting less when it already looks stuck, so a genuinely blocked
         // widget doesn't hold someone for the full twenty seconds.
         setVerifying(true);
-        resetTurnstile();
         token = await waitForToken(tsStatus === "error" ? 8_000 : 20_000);
         setVerifying(false);
       }
 
+      // Nothing arrived. The usual reason is an empty container rather than an
+      // unsolved challenge, so try to put a widget back before asking anything
+      // of the person — that keeps their files and captions. Once per attempt:
+      // if it did not help the first time it will not help on a retry.
+      let recovered = false;
+      if (!token && !recoveryTried.current) {
+        recoveryTried.current = true;
+        recovered = await tryRenderWidget();
+        if (recovered) {
+          setVerifying(true);
+          token = await waitForToken(20_000);
+          setVerifying(false);
+        }
+      }
+
       if (!token) {
-        // Only now is it fair to blame the browser — we waited and nothing came.
-        // tsStatus picks the wording, it no longer decides whether to try.
+        // Only now is it fair to say something, and reload leads, because that
+        // is what has actually worked every time. The old wording — "complete
+        // the verification below, then press Send again" — was shown whenever no
+        // token arrived, including the common case where there was nothing below
+        // to complete, and pressing Send only repeated the same silent wait.
         setError(
           tsStatus === "error"
-            ? "We couldn't load the security check — this usually means an ad blocker or privacy extension is active. Try turning it off for this site and reloading, or email the photos to contact@billmelanson.org instead. Your photos and captions are still here."
-            : "Please complete the verification below, then press Send again. Your photos and captions are still here.",
+            ? "We couldn't load the security check — this usually means an ad blocker or privacy extension is active. Try switching it off for this site and reloading, or email the photos to contact@billmelanson.org instead."
+            : recovered
+              ? "The security check is still loading. Give it a few seconds and press Send again — your photos and captions are still here."
+              : "The security check didn't load properly. Please reload this page and choose the photographs again — sorry, that does mean picking them a second time. If it happens again, email them to contact@billmelanson.org and we'll add them for you.",
         );
+        void reportClientFailure({
+          stage: "verify",
+          // Whether the script global ever appeared separates "blocked outright"
+          // from "loaded but produced nothing", and whether re-rendering helped
+          // separates "container was empty" from something else again.
+          detail: `turnstile:${tsStatus}:script=${
+            typeof (window as { turnstile?: unknown }).turnstile !== "undefined"
+          }:rerender=${recovered}`,
+          files: picked.length,
+        });
         return;
       }
 
@@ -584,6 +695,7 @@ export default function PhotoForm({
         `Something went wrong ${where}. Please try again, or email them to contact@billmelanson.org.` +
           (process.env.NODE_ENV === "development" ? ` [${detail}]` : ""),
       );
+      void reportClientFailure({ stage, detail: detail.slice(0, 200), files: picked.length });
       resetTurnstile();
     } finally {
       setBusy(false);
@@ -614,9 +726,20 @@ export default function PhotoForm({
             share {savedFiles === 1 ? "it" : "them"}.
           </p>
         )}
-        <button type="button" className="btn-quiet" onClick={() => setSaved(0)}>
+        {/* A link that reloads the page, not a button that re-shows the form.
+            Succeeding unmounts the form, which destroys the div the Turnstile
+            widget was living in. Putting the form back with setSaved(0) mounts a
+            fresh, empty container — and the script has already run and will
+            never scan again, so no widget appears and the second submission
+            cannot be completed. One good send followed by a dead one was exactly
+            this. Reloading gives the script a new execution and a new widget.
+
+            Carries the kind through, so someone sending to a particular
+            section stays in that section's flow rather than being dropped
+            back into the default one. */}
+        <a href={`/photos/add?kind=${defaultKind}`} className="btn-quiet">
           Send more
-        </button>{" "}
+        </a>{" "}
         {PHOTO_KINDS.filter((k) => savedKinds.includes(k)).map((k) => (
           <Link key={k} href={`/${k}`} className="btn-quiet">
             View {PHOTO_KIND_LABELS[k].toLowerCase()}
@@ -640,8 +763,8 @@ export default function PhotoForm({
       <section id="add" className="add-entry">
         <h2>Send your photos</h2>
         <p className="muted-note">
-          Choose files below, and mark each one Friends &amp; Family, Camping, 
-          Gigs or Setlists. They&rsquo;ll appear once someone has looked at them.
+          Choose files below, and mark each one with the right section.
+          They&rsquo;ll appear once someone has looked at them.
         </p>
 
         <form onSubmit={submit} className="form">
@@ -665,7 +788,7 @@ export default function PhotoForm({
             />
             <span className="muted-note">
               Up to {MAX_FILES}{" "}
-              photographs at a time, 25 MB each &mdash; straight off
+              photographs at a time, 10 MB each &mdash; straight off
               a phone is fine. Other kinds of file are welcome too: recordings,
               scans, letters, documents, up to {MAX_OTHER_FILES} at a time and 100 MB
               each. Those go into the family archive rather than onto the site.
@@ -845,13 +968,15 @@ export default function PhotoForm({
 
           {siteKey && (
             <div className="field">
-              {/* No data-sitekey/data-action here — rendered explicitly via
-                  window.turnstile.render() in the effect above, not the
-                  implicit class="cf-turnstile" auto-scan. refresh-expired:
-                  "auto" renews the token automatically when it ages out, so
-                  submitting after a long caption-writing session usually
-                  just works. */}
-              <div ref={turnstileBox} />
+              <div
+                ref={turnstileBox}
+                className="cf-turnstile"
+                data-sitekey={siteKey}
+                data-action="turnstile-spin-v2"
+                /* Renew the token automatically when it ages out, so submitting
+                   after a long caption-writing session usually just works. */
+                data-refresh-expired="auto"
+              />
               {tsStatus === "loading" && (
                 <p className="muted-note" role="status">
                   Loading the verification check&hellip;
@@ -877,7 +1002,10 @@ export default function PhotoForm({
 
           {verifying && (
             <p className="muted-note" role="status">
-              Refreshing the verification&hellip; this takes a moment.
+              {/* We are no longer refreshing anything, only waiting for the
+                  widget to finish. Saying "refreshing" implied we had restarted
+                  it, which is what the removed reset actually did. */}
+              Waiting for the verification check&hellip; this takes a moment.
             </p>
           )}
 

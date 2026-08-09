@@ -1,4 +1,3 @@
-import Link from "next/link";
 import Gallery from "./photos/gallery";
 import { getApprovedPhotos, type PhotoKind } from "@/lib/photos";
 import { PHOTO_KIND_LABELS } from "@/lib/photo-kinds";
@@ -8,11 +7,11 @@ import { publicUrl } from "@/lib/music-storage";
 /**
  * One gallery page, parametrized by kind.
  *
- * Friends & Family, Camping, and Gigs are the same page in every respect that
- * matters to the code — same query, same Gallery component, same add flow —
- * and differ only in which rows they show and what the empty state says. A
- * fourth category is adding one entry to PHOTO_KINDS and one call to this
- * function, not a new page.
+ * Friends & Family, Camping, Setlists, and Music are the same page in every
+ * respect that matters to the code — same query, same Gallery component,
+ * same add flow — and differ only in which rows they show and what the
+ * empty state says. A fifth category is adding one entry to PHOTO_KINDS and
+ * one call to this function, not a new page.
  */
 export default async function PhotoCategoryPage({
   kind,
@@ -40,9 +39,12 @@ export default async function PhotoCategoryPage({
       <p className="prose">{intro}</p>
 
       <div className="toolbar-row">
-        <Link href={`/photos/add?kind=${kind}`} className="btn-primary">
+        {/* A full page load, not next/link — /photos/add carries a Turnstile
+            widget, and a client-side navigation there leaves it unscanned.
+            See NEEDS_FULL_LOAD in lib/sections.ts. */}
+        <a href={`/photos/add?kind=${kind}`} className="btn-primary">
           Add to this section
-        </Link>
+        </a>
       </div>
 
       {failed ? (
@@ -55,7 +57,7 @@ export default async function PhotoCategoryPage({
           {imagesConfigured() ? (
             <>
               If you have a photo or a memory for this section,{" "}
-              <Link href={`/photos/add?kind=${kind}`}>please send it</Link> &mdash; it&rsquo;ll
+              <a href={`/photos/add?kind=${kind}`}>please send it</a> &mdash; it&rsquo;ll
               appear here.
             </>
           ) : (

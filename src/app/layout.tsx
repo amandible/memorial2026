@@ -4,6 +4,9 @@ import Nav from "./nav";
 import Footer from "./footer";
 import "./tokens.css";
 
+/** Unset means no analytics at all, which is the correct default for a fork. */
+const analyticsToken = process.env.NEXT_PUBLIC_CF_ANALYTICS_TOKEN;
+
 const SITE_NAME = "Bill Melanson";
 const DESCRIPTION = "In memory of Bill Melanson, 1965–2026. More to come soon.";
 
@@ -65,6 +68,30 @@ export default function RootLayout({
         <Nav />
         {children}
         <Footer />
+
+        {/* Cloudflare Web Analytics. Counts visits and nothing else: the beacon
+            writes no cookie, no localStorage, and stores no IP address, which is
+            the reason it's this one and not a tracker. The token is public by
+            design — it appears in the page source — but it lives in an env var
+            so a fork reports to its own account, or to none.
+
+            spa:false on purpose. Left on, the beacon overrides history.pushState
+            to count client-side route changes, and that is the same API Next's
+            router drives. Real page loads are enough here: the site is five
+            pages, and every link into a form is a full load anyway. */}
+        {/* A plain tag, not next/script. next/script injects client-side after
+            hydration, which puts the beacon behind the framework for no gain —
+            it is fire-and-forget, it renders nothing, and nothing waits on it.
+            Server-rendered it is visible in the page source, so it can be
+            checked with curl, and it still counts a visit on a page where our
+            JavaScript never comes alive. */}
+        {analyticsToken && (
+          <script
+            defer
+            src="https://static.cloudflareinsights.com/beacon.min.js"
+            data-cf-beacon={JSON.stringify({ token: analyticsToken, spa: false })}
+          />
+        )}
       </body>
     </html>
   );

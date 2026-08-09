@@ -249,17 +249,12 @@ export default function MusicUploadForm({
         <p className="muted-note">
           It will appear once someone has had a look at it.
         </p>
-        <button
-          type="button"
-          className="btn-quiet"
-          onClick={() => {
-            setSaved(false);
-            setFile(null);
-            if (fileInput.current) fileInput.current.value = "";
-          }}
-        >
+        {/* A link that reloads the page, not a button that resets local state
+            — see the identical comment in text-memory-form.tsx. A remounted
+            widget container here never gets a working widget without one. */}
+        <a href={`/photos/add?kind=${kind}`} className="btn-quiet">
           Send another
-        </button>{" "}
+        </a>{" "}
         <Link href={`/${kind}`} className="btn-quiet">
           View {PHOTO_KIND_LABELS[kind].toLowerCase()}
         </Link>
