@@ -7,11 +7,11 @@ import { publicUrl } from "@/lib/music-storage";
 /**
  * One gallery page, parametrized by kind.
  *
- * Friends & Family, Camping, Setlists, and Music are the same page in every
- * respect that matters to the code — same query, same Gallery component,
- * same add flow — and differ only in which rows they show and what the
- * empty state says. A fifth category is adding one entry to PHOTO_KINDS and
- * one call to this function, not a new page.
+ * Friends & Family, Camping, and Music are the same page in every respect
+ * that matters to the code — same query, same Gallery component, same add
+ * flow — and differ only in which rows they show and what the empty state
+ * says. A fourth category is adding one entry to PHOTO_KINDS and one call
+ * to this function, not a new page.
  */
 export default async function PhotoCategoryPage({
   kind,

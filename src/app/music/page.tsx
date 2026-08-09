@@ -8,5 +8,10 @@ export const metadata: Metadata = { title: PHOTO_KIND_LABELS.music };
 export const dynamic = "force-dynamic";
 
 export default function MusicPage() {
-  return <PhotoCategoryPage kind="music" intro="Photos and recordings of Bill playing." />;
+  return (
+    <PhotoCategoryPage
+      kind="music"
+      intro="Photos and recordings of Bill playing — including setlists."
+    />
+  );
 }
