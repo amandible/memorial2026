@@ -15,6 +15,12 @@ import { parseYear } from "@/lib/year";
 
 type Kind = PhotoKind;
 
+type TurnstileGlobal = {
+  render: (container: HTMLElement, options: Record<string, unknown>) => string;
+  remove: (widgetId: string) => void;
+  reset: (widgetId?: string) => void;
+};
+
 type Picked = {
   file: File;
   caption: string;
@@ -120,12 +126,10 @@ export default function PhotoForm({
   /** Non-photo files in the batch, which have no page to link to. */
   const [savedFiles, setSavedFiles] = useState(0);
   const [verifying, setVerifying] = useState(false);
-  // Implicit rendering gives no event for "the widget appeared" — Cloudflare's
-  // script just scans the DOM once it loads. Polling the container for the
-  // iframe it injects is the only way to know the empty box isn't permanent.
   const [tsStatus, setTsStatus] = useState<"loading" | "ready" | "error">("loading");
   const fileInput = useRef<HTMLInputElement>(null);
   const turnstileBox = useRef<HTMLDivElement>(null);
+  const widgetId = useRef<string | null>(null);
   /** Every object URL handed out, so none leaks when the page goes away. */
   const objectUrls = useRef<Set<string>>(new Set());
 
@@ -137,6 +141,20 @@ export default function PhotoForm({
     };
   }, []);
 
+  /**
+   * Explicit rendering, not the implicit class="cf-turnstile" auto-scan.
+   *
+   * The scan only runs once, when the Turnstile script first parses the
+   * page. That's fine as long as this is the only widget ever mounted — but
+   * since the add-mode toggle can mount PhotoForm *after* TextMemoryForm or
+   * MusicUploadForm already loaded the script (switching back to "Send a
+   * photo"), window.turnstile being truthy only proves the *script* loaded,
+   * not that *this* container has a widget. Checking scriptLoaded as a
+   * proxy for "ready" was correct back when this was the only form on the
+   * page; the add-mode toggle broke that assumption. Rendering explicitly
+   * the moment a container is available is the only way this reliably
+   * shows anything regardless of tab order.
+   */
   useEffect(() => {
     if (!siteKey) return;
     let cancelled = false;
@@ -145,22 +163,19 @@ export default function PhotoForm({
     function tick() {
       if (cancelled) return;
 
-      // Detect the *script*, not the widget. Looking for an iframe inside the
-      // container was wrong twice over: Turnstile renders into a shadow root,
-      // so querySelector never finds one, and a visibly working widget showing
-      // "Success!" still reported "taking longer than expected".
-      //
-      // The only thing this warning is really about is whether an extension
-      // blocked challenges.cloudflare.com, and that is exactly what the absence
-      // of window.turnstile means. If the script is there, the check works —
-      // whether the widget has finished is not our business.
-      const scriptLoaded =
-        typeof (window as { turnstile?: unknown }).turnstile !== "undefined";
+      const w = (window as { turnstile?: TurnstileGlobal }).turnstile;
+      if (w && turnstileBox.current && !widgetId.current) {
+        widgetId.current = w.render(turnstileBox.current, {
+          sitekey: siteKey,
+          action: "turnstile-spin-v2",
+          "refresh-expired": "auto",
+        });
+      }
+
       const solved = Boolean(readToken());
-      const hasWidget = Boolean(turnstileBox.current?.firstElementChild);
 
       const next: typeof tsStatus =
-        scriptLoaded || solved || hasWidget
+        widgetId.current || solved
           ? "ready"
           : Date.now() - start > 20_000
             ? "error"
@@ -175,6 +190,15 @@ export default function PhotoForm({
     tick();
     return () => {
       cancelled = true;
+      const w = (window as { turnstile?: TurnstileGlobal }).turnstile;
+      if (widgetId.current && w) {
+        try {
+          w.remove(widgetId.current);
+        } catch (e) {
+          console.warn("Turnstile remove failed (widget already gone):", e);
+        }
+        widgetId.current = null;
+      }
     };
   }, [siteKey]);
 
@@ -340,7 +364,8 @@ export default function PhotoForm({
     // That turned a clear error into the generic catch-all. Never let cleanup
     // become the reported failure.
     try {
-      (window as { turnstile?: { reset: () => void } }).turnstile?.reset();
+      const w = (window as { turnstile?: TurnstileGlobal }).turnstile;
+      if (widgetId.current) w?.reset(widgetId.current);
     } catch (e) {
       console.warn("Turnstile reset failed (widget already gone):", e);
     }
@@ -348,7 +373,7 @@ export default function PhotoForm({
 
   function readToken(): string | null {
     return (
-      (document.querySelector('[name="cf-turnstile-response"]') as HTMLInputElement | null)
+      (turnstileBox.current?.querySelector('[name="cf-turnstile-response"]') as HTMLInputElement | null)
         ?.value || null
     );
   }
@@ -819,15 +844,13 @@ export default function PhotoForm({
 
           {siteKey && (
             <div className="field">
-              <div
-                ref={turnstileBox}
-                className="cf-turnstile"
-                data-sitekey={siteKey}
-                data-action="turnstile-spin-v2"
-                /* Renew the token automatically when it ages out, so submitting
-                   after a long caption-writing session usually just works. */
-                data-refresh-expired="auto"
-              />
+              {/* No data-sitekey/data-action here — rendered explicitly via
+                  window.turnstile.render() in the effect above, not the
+                  implicit class="cf-turnstile" auto-scan. refresh-expired:
+                  "auto" renews the token automatically when it ages out, so
+                  submitting after a long caption-writing session usually
+                  just works. */}
+              <div ref={turnstileBox} />
               {tsStatus === "loading" && (
                 <p className="muted-note" role="status">
                   Loading the verification check&hellip;

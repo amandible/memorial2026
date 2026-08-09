@@ -10,6 +10,12 @@ import { isAllowedMusicExtension } from "@/lib/music";
 const MAX_CAPTION = 500;
 const MAX_FILE_BYTES = 100 * 1024 * 1024;
 
+type TurnstileGlobal = {
+  render: (container: HTMLElement, options: Record<string, unknown>) => string;
+  remove: (widgetId: string) => void;
+  reset: (widgetId?: string) => void;
+};
+
 type UploadOutcome =
   | { ok: true }
   | { ok: false; kind: "http"; label: string }
@@ -64,7 +70,20 @@ export default function MusicUploadForm({
   const [tsStatus, setTsStatus] = useState<"loading" | "ready" | "error">("loading");
   const fileInput = useRef<HTMLInputElement>(null);
   const turnstileBox = useRef<HTMLDivElement>(null);
+  const widgetId = useRef<string | null>(null);
 
+  /**
+   * Explicit rendering, not the implicit class="cf-turnstile" auto-scan.
+   *
+   * The scan only runs once, when the Turnstile script first parses the
+   * page. Since this form only mounts when the add-mode toggle switches to
+   * it — after "Send a photo" (the default tab) may already have loaded the
+   * script — window.turnstile being truthy only proves the *script*
+   * loaded, not that *this* container has a widget. A container added to
+   * the DOM after the scan already ran is invisible to it. Rendering
+   * explicitly the moment a container is available is the only way this
+   * reliably shows anything.
+   */
   useEffect(() => {
     if (!siteKey) return;
     let cancelled = false;
@@ -72,12 +91,18 @@ export default function MusicUploadForm({
 
     function tick() {
       if (cancelled) return;
-      const scriptLoaded = typeof (window as { turnstile?: unknown }).turnstile !== "undefined";
-      const solved = Boolean(readToken());
-      const hasWidget = Boolean(turnstileBox.current?.firstElementChild);
+      const w = (window as { turnstile?: TurnstileGlobal }).turnstile;
+      if (w && turnstileBox.current && !widgetId.current) {
+        widgetId.current = w.render(turnstileBox.current, {
+          sitekey: siteKey,
+          action: "turnstile-music",
+          "refresh-expired": "auto",
+        });
+      }
 
+      const solved = Boolean(readToken());
       const next: typeof tsStatus =
-        scriptLoaded || solved || hasWidget
+        widgetId.current || solved
           ? "ready"
           : Date.now() - start > 20_000
             ? "error"
@@ -90,12 +115,22 @@ export default function MusicUploadForm({
     tick();
     return () => {
       cancelled = true;
+      const w = (window as { turnstile?: TurnstileGlobal }).turnstile;
+      if (widgetId.current && w) {
+        try {
+          w.remove(widgetId.current);
+        } catch (e) {
+          console.warn("Turnstile remove failed (widget already gone):", e);
+        }
+        widgetId.current = null;
+      }
     };
   }, [siteKey]);
 
   function resetTurnstile() {
     try {
-      (window as { turnstile?: { reset: () => void } }).turnstile?.reset();
+      const w = (window as { turnstile?: TurnstileGlobal }).turnstile;
+      if (widgetId.current) w?.reset(widgetId.current);
     } catch (e) {
       console.warn("Turnstile reset failed (widget already gone):", e);
     }
@@ -103,7 +138,7 @@ export default function MusicUploadForm({
 
   function readToken(): string | null {
     return (
-      (document.querySelector('[name="cf-turnstile-response"]') as HTMLInputElement | null)
+      (turnstileBox.current?.querySelector('[name="cf-turnstile-response"]') as HTMLInputElement | null)
         ?.value || null
     );
   }
@@ -309,13 +344,10 @@ export default function MusicUploadForm({
 
           {siteKey && (
             <div className="field">
-              <div
-                ref={turnstileBox}
-                className="cf-turnstile"
-                data-sitekey={siteKey}
-                data-action="turnstile-music"
-                data-refresh-expired="auto"
-              />
+              {/* No data-sitekey/data-action here — rendered explicitly via
+                  window.turnstile.render() in the effect above, not the
+                  implicit class="cf-turnstile" auto-scan. */}
+              <div ref={turnstileBox} />
               {tsStatus === "loading" && (
                 <p className="muted-note" role="status">
                   Loading the verification check&hellip;
