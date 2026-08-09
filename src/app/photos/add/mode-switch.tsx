@@ -34,7 +34,7 @@ export default function AddModeSwitch({
         <button
           type="button"
           role="tab"
-          className={mode === "photo" ? "btn-primary" : "btn-quiet"}
+          className="mode-tab"
           aria-selected={mode === "photo"}
           onClick={() => setMode("photo")}
         >
@@ -43,7 +43,7 @@ export default function AddModeSwitch({
         <button
           type="button"
           role="tab"
-          className={mode === "text" ? "btn-primary" : "btn-quiet"}
+          className="mode-tab"
           aria-selected={mode === "text"}
           onClick={() => setMode("text")}
         >
@@ -52,7 +52,7 @@ export default function AddModeSwitch({
         <button
           type="button"
           role="tab"
-          className={mode === "music" ? "btn-primary" : "btn-quiet"}
+          className="mode-tab"
           aria-selected={mode === "music"}
           onClick={() => setMode("music")}
         >

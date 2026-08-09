@@ -310,16 +310,39 @@ body {
    like .toolbar-row's button-plus-note layout — the adjacency itself is what
    reads as "choose one of these two", not the individual buttons. */
 .mode-tabs { display: inline-flex; margin-top: var(--s4); }
-.mode-tabs button {
+/* One fixed size for every tab regardless of selection — mixing .btn-primary
+   (bigger padding, bigger font, a different font-family) in for the selected
+   one made the whole row visibly resize on every click. Only background and
+   border change now; the box itself never does. */
+.mode-tab {
+  display: inline-block;
+  font-family: var(--body);
+  font-size: var(--size-small);
+  padding: .5rem 1rem;
+  min-height: 40px;
+  border: 1px solid var(--rule);
   border-radius: 0;
+  background: none;
+  color: var(--link);
+  cursor: pointer;
   margin-left: -1px;
 }
-.mode-tabs button:first-child {
+.mode-tab:hover { border-color: currentColor; }
+.mode-tab[aria-selected="true"] {
+  background: var(--text);
+  color: var(--bg);
+  border-color: var(--text);
+  /* Keeps this tab's now-wider border from being overdrawn by its neighbours'
+     -1px overlap. */
+  position: relative;
+  z-index: 1;
+}
+.mode-tab:first-child {
   margin-left: 0;
   border-top-left-radius: 2px;
   border-bottom-left-radius: 2px;
 }
-.mode-tabs button:last-child {
+.mode-tab:last-child {
   border-top-right-radius: 2px;
   border-bottom-right-radius: 2px;
 }
