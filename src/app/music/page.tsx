@@ -11,7 +11,7 @@ export default function MusicPage() {
   return (
     <PhotoCategoryPage
       kind="music"
-      intro="Photos of Bill playing, recordings, setlists, and other musical mementoes."
+      intro="Photos of Bill playing, recordings, setlists, and other musical mementos."
     />
   );
 }
