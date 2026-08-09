@@ -54,6 +54,13 @@ export async function GET() {
     process.env.R2_ACCOUNT_ID && process.env.R2_ACCESS_KEY_ID &&
       process.env.R2_SECRET_ACCESS_KEY && process.env.R2_BUCKET,
   );
+  // Not an outage if absent — the site still works, "Send audio or video
+  // instead" just doesn't offer a working destination.
+  degraded.musicStorage = Boolean(
+    process.env.R2_ACCOUNT_ID && process.env.R2_MUSIC_ACCESS_KEY_ID &&
+      process.env.R2_MUSIC_SECRET_ACCESS_KEY && process.env.R2_MUSIC_BUCKET &&
+      process.env.NEXT_PUBLIC_R2_MUSIC_PUBLIC_URL,
+  );
 
   const ok = Object.values(critical).every(Boolean);
 

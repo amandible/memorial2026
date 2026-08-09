@@ -1,15 +1,20 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { isVideoExtension } from "@/lib/music";
 
 export type GalleryPhoto = {
   id: string;
-  /** Grid-sized. Big enough to stay crisp at 2x in a ~380px tile. Null for a typed memory — there is no image. */
+  /** Grid-sized. Big enough to stay crisp at 2x in a ~380px tile. Null unless this entry is a photo. */
   thumb: string | null;
-  /** Full size, only fetched when a photo is actually enlarged. Null for a typed memory. */
+  /** Full size, only fetched when a photo is actually enlarged. Null unless this entry is a photo. */
   full: string | null;
-  /** The written memory itself, for entries with no photo at all. */
+  /** The written memory itself, for entries with no photo or recording. */
   bodyText: string | null;
+  /** Public URL of a recording, for entries with neither a photo nor typed text. */
+  mediaUrl: string | null;
+  /** Original filename, kept to tell audio from video and as the download's suggested name. */
+  mediaFilename: string | null;
   caption: string | null;
   submitter: string | null;
   year: number | null;
@@ -100,14 +105,25 @@ export default function Gallery({ photos }: { photos: GalleryPhoto[] }) {
                   ? p.caption
                     ? `Enlarge: ${p.caption}`
                     : "Enlarge photograph"
-                  : p.caption
-                    ? `Read: ${p.caption}`
-                    : "Read the full memory"
+                  : p.mediaUrl
+                    ? p.caption
+                      ? `Play: ${p.caption}`
+                      : "Play the recording"
+                    : p.caption
+                      ? `Read: ${p.caption}`
+                      : "Read the full memory"
               }
             >
               {p.thumb ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={p.thumb} alt={p.caption ?? "A photograph of Bill Melanson"} loading="lazy" decoding="async" />
+              ) : p.mediaUrl ? (
+                <div className="gallery-text-tile gallery-media-tile">
+                  <span className="gallery-media-icon" aria-hidden="true">
+                    {isVideoExtension(p.mediaFilename ?? "") ? "▶" : "♪"}
+                  </span>
+                  {p.caption && <span className="gallery-text-title">{p.caption}</span>}
+                </div>
               ) : (
                 <div className="gallery-text-tile">
                   {p.caption && <span className="gallery-text-title">{p.caption}</span>}
@@ -150,6 +166,21 @@ export default function Gallery({ photos }: { photos: GalleryPhoto[] }) {
             {current.full ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={current.full} alt={current.caption ?? "A photograph of Bill Melanson"} />
+            ) : current.mediaUrl ? (
+              <div className="lightbox-media">
+                {isVideoExtension(current.mediaFilename ?? "") ? (
+                  <video src={current.mediaUrl} controls />
+                ) : (
+                  <audio src={current.mediaUrl} controls />
+                )}
+                {/* The download attribute forces a save regardless of how the
+                    object happens to be served, so there's no tension between
+                    "plays inline" and "downloads cleanly" — no server-side
+                    Content-Disposition juggling needed either way. */}
+                <a href={current.mediaUrl} download={current.mediaFilename ?? undefined} className="btn-quiet">
+                  Download
+                </a>
+              </div>
             ) : (
               <p className="entry-message lightbox-text">{current.bodyText}</p>
             )}

@@ -8,6 +8,8 @@ export type Photo = {
   id: string;
   storage_ref: string | null;
   body_text: string | null;
+  media_key: string | null;
+  media_filename: string | null;
   caption: string | null;
   submitter: string | null;
   created_at: Date;
@@ -35,7 +37,8 @@ export type PendingPhoto = Photo & { email: string | null; status: string };
  */
 export async function getApprovedPhotos(kind: PhotoKind): Promise<Photo[]> {
   return (await db()`
-    select id, storage_ref, body_text, caption, submitter, created_at, taken_year, kind
+    select id, storage_ref, body_text, media_key, media_filename, caption, submitter,
+           created_at, taken_year, kind
     from photos
     where status = 'approved' and kind = ${kind}
     order by sort_order nulls last, created_at desc
@@ -45,7 +48,8 @@ export async function getApprovedPhotos(kind: PhotoKind): Promise<Photo[]> {
 /** Everything awaiting review, oldest first so nothing sits forgotten. */
 export async function getPendingPhotos(): Promise<PendingPhoto[]> {
   return (await db()`
-    select id, storage_ref, body_text, caption, submitter, email, status, created_at, kind
+    select id, storage_ref, body_text, media_key, media_filename, caption, submitter,
+           email, status, created_at, kind
     from photos
     where status = 'pending'
     order by created_at

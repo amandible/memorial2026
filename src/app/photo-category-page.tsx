@@ -3,6 +3,7 @@ import Gallery from "./photos/gallery";
 import { getApprovedPhotos, type PhotoKind } from "@/lib/photos";
 import { PHOTO_KIND_LABELS } from "@/lib/photo-kinds";
 import { imageUrl, thumbUrl, imagesConfigured } from "@/lib/cf-images";
+import { publicUrl } from "@/lib/music-storage";
 
 /**
  * One gallery page, parametrized by kind.
@@ -68,6 +69,8 @@ export default async function PhotoCategoryPage({
             thumb: p.storage_ref ? thumbUrl(p.storage_ref) : null,
             full: p.storage_ref ? imageUrl(p.storage_ref) : null,
             bodyText: p.body_text,
+            mediaUrl: p.media_key ? publicUrl(p.media_key) : null,
+            mediaFilename: p.media_filename,
             caption: p.caption,
             submitter: p.submitter,
             year: p.taken_year,

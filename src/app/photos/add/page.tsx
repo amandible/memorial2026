@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import AddModeSwitch from "./mode-switch";
 import { imagesConfigured } from "@/lib/cf-images";
+import { musicStorageConfigured } from "@/lib/music-storage";
 import { parseKind } from "@/lib/photos";
 import { PHOTO_KIND_LABELS } from "@/lib/photo-kinds";
 
@@ -31,6 +32,7 @@ export default async function AddPhotosPage({
         siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY}
         defaultKind={defaultKind}
         imagesConfigured={imagesConfigured()}
+        musicConfigured={musicStorageConfigured()}
       />
     </main>
   );

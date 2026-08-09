@@ -401,6 +401,11 @@ body {
 .mod-meta { color: var(--muted); font-size: .85rem; overflow-wrap: anywhere; }
 .mod-photo.is-rejected { opacity: .5; }
 
+/* A recording in the moderation grid — admin can listen or watch before
+   approving, unlike artifact_files where download-and-check was the only
+   option. */
+.mod-media { width: 100%; display: block; }
+
 /* A typed memory in the moderation grid: same box as a photo's thumbnail, but
    text instead of an <img>, clamped so one very long memory doesn't dwarf
    every photo around it. */
@@ -565,6 +570,12 @@ mark.todo {
   overflow: hidden;
 }
 
+/* A recording's tile: no live player in the grid — the full <audio>/<video>
+   control only appears once opened, matching the text tile's preview-only
+   grid / full-content-in-lightbox split. */
+.gallery-media-tile { align-items: center; justify-content: center; text-align: center; }
+.gallery-media-icon { font-size: 2.5rem; color: var(--muted); }
+
 .gallery-caption {
   color: var(--muted);
   font-size: var(--size-small);
@@ -618,6 +629,19 @@ mark.todo {
   background: var(--bg-sunk);
   font-size: 1.05rem;
 }
+/* A recording in the lightbox: the native player, full width, plus a plain
+   download link below it rather than fighting over server-side headers. */
+.lightbox-media {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+  padding: var(--s4) var(--s3);
+  background: var(--bg-sunk);
+}
+.lightbox-media audio,
+.lightbox-media video { width: 100%; }
+.lightbox-media video { max-height: min(70vh, calc(96vh - 12rem)); }
+.lightbox-media a { align-self: flex-start; }
 .lightbox-bar {
   display: flex; align-items: center; justify-content: space-between;
   gap: var(--s2); flex-wrap: wrap;

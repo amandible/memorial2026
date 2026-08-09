@@ -179,3 +179,34 @@ export async function notifyTextMemory(details: {
     ].join("\n"),
   );
 }
+
+/**
+ * A recording (audio or video) has been submitted.
+ *
+ * Unlike a photo, this is already on the public music bucket by the time
+ * this email goes out — approval controls whether it's *listed*, not
+ * whether the file exists. Worth saying plainly, since it's easy to assume
+ * "not public yet" the way photos and text memories are.
+ */
+export async function notifyMusicSubmission(details: {
+  submitter: string | null;
+  email: string | null;
+  title: string | null;
+  filename: string;
+}): Promise<void> {
+  const { submitter, email, title, filename } = details;
+  const who = submitter || "Someone";
+
+  await send(
+    `Recording waiting: ${title || filename} from ${who}`,
+    [
+      `${who} sent a recording${title ? `: "${title}"` : ""} (${filename}).`,
+      email ? `Their email: ${email}` : "No email given.",
+      "",
+      "It isn't listed anywhere on the site yet, but the file itself is",
+      "already reachable at its own direct link, the same way a submitted",
+      "photograph is before anyone approves it. Review it here:",
+      adminUrl(),
+    ].join("\n"),
+  );
+}

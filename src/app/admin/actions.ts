@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { deleteImage } from "@/lib/cf-images";
 import { archivePhotoQuietly } from "@/lib/archive";
 import { deleteObject } from "@/lib/r2";
+import { deleteObject as deleteMusicObject } from "@/lib/music-storage";
 import { parseYear } from "@/lib/exif";
 import { parseKind } from "@/lib/photos";
 import { PHOTO_KINDS } from "@/lib/photo-kinds";
@@ -15,10 +16,10 @@ export type LoginState = { error?: string };
 /**
  * Refresh everywhere a photograph is visible.
  *
- * All three galleries, because a photograph can move between them and because
- * approving one has to clear the page it lands on — not the page it came from.
- * Listing them here rather than at each call site means adding a fourth
- * gallery is one edit instead of several.
+ * Every gallery, because a photograph (or recording, or typed memory) can
+ * move between them and because approving one has to clear the page it
+ * lands on — not the page it came from. Listing them here rather than at
+ * each call site means adding another gallery is one edit instead of several.
  */
 function revalidateGalleries(): void {
   revalidatePath("/admin");
@@ -154,16 +155,19 @@ export async function purgePhoto(id: string): Promise<void> {
   if (!(await isAdmin())) throw new Error("Not authorised.");
 
   const [row] = (await db()`
-    select storage_ref, archive_key from photos where id = ${id}::uuid and status = 'rejected'
-  `) as { storage_ref: string | null; archive_key: string | null }[];
+    select storage_ref, archive_key, media_key from photos where id = ${id}::uuid and status = 'rejected'
+  `) as { storage_ref: string | null; archive_key: string | null; media_key: string | null }[];
   // Only rejected photos can be purged, so an approved one can't go by mistake.
   if (!row) throw new Error("Only a rejected photo can be deleted.");
 
-  // A typed memory has no image at all — nothing to delete from Cloudflare Images.
+  // A typed memory or a recording has no image — nothing to delete from Cloudflare Images.
   if (row.storage_ref) await deleteImage(row.storage_ref);
   // "Delete for good" has to mean the archive too, or a purge would leave a
   // copy behind in R2 that nobody knows about.
   if (row.archive_key) await deleteObject(row.archive_key);
+  // A recording has no separate archive step — it's already in R2 from the
+  // moment it was submitted, so purging it means deleting that object too.
+  if (row.media_key) await deleteMusicObject(row.media_key);
   await db()`delete from photos where id = ${id}::uuid`;
   revalidatePath("/admin");
 }

@@ -3,6 +3,8 @@ import { db } from "@/lib/db";
 import { formatDate } from "@/lib/guestbook";
 import { isAdmin } from "@/lib/admin-auth";
 import { thumbUrl } from "@/lib/cf-images";
+import { publicUrl } from "@/lib/music-storage";
+import { isVideoExtension } from "@/lib/music";
 import { logout } from "./actions";
 import LoginForm from "./login-form";
 import EntryActions from "./entry-actions";
@@ -102,8 +104,8 @@ export default async function AdminPage() {
   // group, matching the public gallery. Oldest-first buried a photograph that
   // had just arrived at the bottom of a long page.
   const photos = (await db()`
-    select id, storage_ref, body_text, caption, submitter, email, status, created_at, archived_at,
-           taken_year, taken_source, exif_taken_at, kind, width, height
+    select id, storage_ref, body_text, media_key, media_filename, caption, submitter, email,
+           status, created_at, archived_at, taken_year, taken_source, exif_taken_at, kind, width, height
     from photos
     order by (status = 'pending') desc, created_at desc
     limit 200
@@ -111,6 +113,8 @@ export default async function AdminPage() {
     id: string;
     storage_ref: string | null;
     body_text: string | null;
+    media_key: string | null;
+    media_filename: string | null;
     caption: string | null;
     submitter: string | null;
     email: string | null;
@@ -198,6 +202,12 @@ export default async function AdminPage() {
               {p.storage_ref ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={thumbUrl(p.storage_ref)} alt={p.caption ?? "Submitted photograph"} loading="lazy" />
+              ) : p.media_key ? (
+                isVideoExtension(p.media_filename ?? "") ? (
+                  <video src={publicUrl(p.media_key)} controls className="mod-media" />
+                ) : (
+                  <audio src={publicUrl(p.media_key)} controls className="mod-media" />
+                )
               ) : (
                 <p className="mod-text-preview">{p.body_text}</p>
               )}
@@ -208,6 +218,7 @@ export default async function AdminPage() {
                 )}
                 <CaptionEditor id={p.id} caption={p.caption} />
                 {p.body_text !== null && <BodyTextEditor id={p.id} bodyText={p.body_text} />}
+                {p.media_filename && <span className="mod-meta">{p.media_filename}</span>}
                 <KindEditor id={p.id} kind={p.kind} />
                 {p.storage_ref && (
                   <YearEditor
