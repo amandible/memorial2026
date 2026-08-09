@@ -47,7 +47,7 @@ export default function AddModeSwitch({
           aria-selected={mode === "text"}
           onClick={() => setMode("text")}
         >
-          Send text instead
+          Send text
         </button>
         <button
           type="button"
@@ -56,7 +56,7 @@ export default function AddModeSwitch({
           aria-selected={mode === "music"}
           onClick={() => setMode("music")}
         >
-          Send audio or video instead
+          Send audio or video
         </button>
       </div>
 
