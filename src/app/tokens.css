@@ -561,7 +561,7 @@ mark.todo {
    them at about 280px. Everything else on the page stays at the measure. */
 
 .page-photos { max-width: 74rem; }
-.page-photos > :not(.gallery):not(.toolbar-row) { max-width: var(--measure); margin-inline: auto; }
+.page-photos > :not(.gallery):not(.toolbar-row):not(.category-toolbar) { max-width: var(--measure); margin-inline: auto; }
 
 .gallery {
   list-style: none;
