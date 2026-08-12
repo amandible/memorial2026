@@ -36,8 +36,6 @@ export default async function PhotoCategoryPage({
       <h1 className="page-title">{label}</h1>
       <hr className="rule" />
 
-      <p className="prose">{intro}</p>
-
       <div className="toolbar-row">
         {/* A full page load, not next/link — /photos/add carries a Turnstile
             widget, and a client-side navigation there leaves it unscanned.
@@ -45,6 +43,7 @@ export default async function PhotoCategoryPage({
         <a href={`/photos/add?kind=${kind}`} className="btn-primary">
           Add to this section
         </a>
+        <p className="prose">{intro}</p>
       </div>
 
       {failed ? (

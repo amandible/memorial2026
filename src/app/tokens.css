@@ -305,6 +305,11 @@ body {
   margin-top: var(--s4);
 }
 .toolbar-row .muted-note { margin: 0; }
+/* A category page's intro paragraph, sharing the row with its Add button
+   rather than sitting above it in its own centered column — that mismatch
+   (button pinned to the row's start, text centered in a narrower one above
+   it) read as unrelated to each other rather than as one unit. */
+.toolbar-row .prose { margin: 0; flex: 1 1 16rem; }
 
 /* Two buttons that pick one of two modes, touching rather than spread apart
    like .toolbar-row's button-plus-note layout — the adjacency itself is what
