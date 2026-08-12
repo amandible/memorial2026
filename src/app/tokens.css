@@ -305,11 +305,28 @@ body {
   margin-top: var(--s4);
 }
 .toolbar-row .muted-note { margin: 0; }
-/* A category page's intro paragraph, sharing the row with its Add button
-   rather than sitting above it in its own centered column — that mismatch
-   (button pinned to the row's start, text centered in a narrower one above
-   it) read as unrelated to each other rather than as one unit. */
-.toolbar-row .prose { margin: 0; flex: 1 1 16rem; }
+
+/* A category page's intro paragraph and its Add button, one row. A grid
+   rather than flex: the outer columns are equal (1fr each), so the middle
+   one — the text — sits at the true center of the row regardless of the
+   button's width, with the button anchored to the right edge rather than
+   just "after the text". */
+.category-toolbar {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: var(--s3);
+  margin-top: var(--s4);
+}
+.category-toolbar .prose { grid-column: 2; margin: 0; text-align: center; }
+.category-toolbar .btn-primary { grid-column: 3; justify-self: end; }
+@media (max-width: 34rem) {
+  /* Stack on narrow screens — a right-anchored button and a centered
+     paragraph both fighting for a ~360px row reads as cramped, not tidy. */
+  .category-toolbar { grid-template-columns: 1fr; justify-items: center; gap: var(--s2); }
+  .category-toolbar .prose { grid-column: 1; }
+  .category-toolbar .btn-primary { grid-column: 1; justify-self: center; }
+}
 
 /* Two buttons that pick one of two modes, touching rather than spread apart
    like .toolbar-row's button-plus-note layout — the adjacency itself is what
