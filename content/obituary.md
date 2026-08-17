@@ -10,7 +10,9 @@ Bill had a life-long passion for music &ndash; learning, teaching, performing, p
 
 His true joy was his family. He is survived by his devoted wife, Kathleen (Drennen) Melanson; two daughters, Sierra Black and wife Alison Mandel of Somerville, MA and Arwen Gleason and husband Matthew of Boston, MA; six grandchildren, Rio, Serena, Caden, Toren, Sorcha and Phaedra; his uncle, Forrest "Sonny" Higgins and wife (D) Alice Blonda of Newburyport, MA; his aunt, Dani Melanson and husband (D) Robert Melanson of Seabrook, NH, as well as cousins: Karen Carbone, Sharon Higgins, Christopher Blonda, Scott Melanson, Robert Melanson, Stephen Melanson, Mark Melanson, William Blonda, along with many other loving family members.
 
-Calling hours will be on Tuesday, August 18, 2026 from 4 P.M. to 8 P.M. at Elliott, Woodworth & Rogers Family Funeral Home, 35 Green Street, Newburyport, MA 01950. A celebration of life will be held at a later date.
+Calling hours will be on Tuesday, August 18, 2026 from 4 P.M. to 8 P.M. at Elliott, Woodworth & Rogers Family Funeral Home, 35 Green Street, Newburyport, MA 01950. 
+
+A celebration of life will be held at the Newburyport Elks, 25 Low St., on November 15th, time to be determined.
 
 In lieu of flowers, donations in memory of Bill Melanson can be made to the [Victor Wooten Center for Music and Nature](https://www.vixcamps.com/donate) to support the Dorothy G. Wooten Scholarship.
 

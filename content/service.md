@@ -4,7 +4,7 @@ title: "Meeting to commemorate Bill's Life"
 
 Calling hours will be Tuesday, August 18th, from 4-8pm at Elliott, Woodworth &
 Rogers Family Funeral Home, 35 Green St. Newburyport, MA 01950. A celebration
-of life will also be planned for a future date.
+of life will also take place on November 15th at the Newburyport Elks, 25 Low St.
 
 If you would like to be told when more details are fixed, you can
 [leave your email address](/subscribe). It will only be used for news about the

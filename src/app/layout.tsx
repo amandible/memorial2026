@@ -8,7 +8,7 @@ import "./tokens.css";
 const analyticsToken = process.env.NEXT_PUBLIC_CF_ANALYTICS_TOKEN;
 
 const SITE_NAME = "Bill Melanson";
-const DESCRIPTION = "In memory of Bill Melanson, 1965–2026. More to come soon.";
+const DESCRIPTION = "In memory of Bill Melanson, 1965–2026.";
 
 /**
  * Absolute base for Open Graph URLs.
