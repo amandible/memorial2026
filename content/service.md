@@ -2,9 +2,9 @@
 title: "Meeting to commemorate Bill's Life"
 ---
 
-The funeral service will be August 18th, from 4-8pm at Paul C. Rogers & Sons
-Funeral Home, 35 Green St. Newburyport, MA 01950. A celebration of life will
-also be planned for a future date.
+Calling hours will be Tuesday, August 18th, from 4-8pm at Elliott, Woodworth &
+Rogers Family Funeral Home, 35 Green St. Newburyport, MA 01950. A celebration
+of life will also be planned for a future date.
 
 If you would like to be told when more details are fixed, you can
 [leave your email address](/subscribe). It will only be used for news about the
