@@ -13,3 +13,5 @@ His true joy was his family. He is survived by his devoted wife, Kathleen (Drenn
 Calling hours will be on Tuesday, August 18, 2026 from 4 P.M. to 8 P.M. at Elliott, Woodworth & Rogers Family Funeral Home, 35 Green Street, Newburyport, MA 01950. A celebration of life will be held at a later date.
 
 In lieu of flowers, donations in memory of Bill Melanson can be made to the [Victor Wooten Center for Music and Nature](https://www.vixcamps.com/donate) to support the Dorothy G. Wooten Scholarship.
+
+If you knew Bill, we'd love to hear from you — [leave a message in the guestbook](/guestbook) or [share a photo](/photos/add).
