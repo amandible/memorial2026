@@ -208,6 +208,30 @@ export async function purgeArtifactFile(id: string): Promise<void> {
   revalidatePath("/admin");
 }
 
+/**
+ * Format a timestamp in Eastern time, e.g. "2026-08-13 6:25 PM EDT".
+ *
+ * The database stores UTC and a raw `toISOString()` used to go straight into
+ * the CSV — technically correct, but a timestamp near midnight UTC lands on
+ * the *previous* calendar day in Eastern, which is confusing enough that it
+ * looks like a bug. `Intl.DateTimeFormat` handles the EST/EDT switch itself,
+ * so this needs no extra dependency and no manual daylight-saving logic.
+ */
+function toEastern(d: Date): string {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/New_York",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+    timeZoneName: "short",
+  }).formatToParts(d);
+  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? "";
+  return `${get("year")}-${get("month")}-${get("day")} ${get("hour")}:${get("minute")} ${get("dayPeriod")} ${get("timeZoneName")}`;
+}
+
 export async function exportContactsCsv(): Promise<string> {
   if (!(await isAdmin())) throw new Error("Not authorised.");
 
@@ -225,6 +249,6 @@ export async function exportContactsCsv(): Promise<string> {
 
   return [
     "email,name,note,created_at",
-    ...rows.map((r) => [r.email, r.name, r.note, r.created_at.toISOString()].map(esc).join(",")),
+    ...rows.map((r) => [r.email, r.name, r.note, toEastern(r.created_at)].map(esc).join(",")),
   ].join("\n");
 }
