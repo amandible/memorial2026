@@ -160,7 +160,12 @@ carries the original verification across to the recording step.
 visitor-facing outage (DB unreachable, or `TURNSTILE_SECRET` missing in prod).
 Optional services being merely unconfigured report as `degraded` in the body
 without tripping the alert; don't make this endpoint call out to Cloudflare Images
-or Resend, since a periodic health check would burn their quota.
+or Resend, since a periodic health check would burn their quota. **The database is
+only queried when `?deep=1` is passed** — polling the plain URL every five minutes
+was resetting Neon's idle timer and keeping the free-tier compute awake around the
+clock, exhausting the monthly CU-hour allowance in about two weeks. Poll the plain
+URL as often as you like; `?deep=1` must never be polled faster than hourly. See
+README.md's "Uptime monitoring" section before adding or changing a monitor.
 
 **Styling is one file, no build tooling.** All CSS lives in `src/app/tokens.css` —
 no Tailwind, no CSS-in-JS (`AGENTS.md`). Fonts are committed `.woff2` files loaded

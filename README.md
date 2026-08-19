@@ -209,12 +209,31 @@ enough for a five-page site, and every link into a form is a full load anyway.
 
 ### Uptime monitoring
 
-Two monitors, because either alone would miss something:
+Three monitors, and **the intervals matter — one of them costs money if set wrong.**
 
-| Monitor | Watches | Catches |
-|---|---|---|
-| `https://joeweisman.org/api/health` | status code | The **database being unreachable.** The home page is static, so Vercel keeps serving it with a 200 while the guestbook and gallery are broken — a homepage check would report all-clear through the outage that matters most. |
-| `https://joeweisman.org` keyword `Joe Weisman` | page content | A Vercel error page returning 200. Checking for his name means the alert fires when the page is *wrong*, not merely reachable. |
+| Monitor | Interval | Watches | Catches |
+|---|---|---|---|
+| `https://billmelanson.org/api/health` | 5 min | status code | The app being down, or Turnstile's secret missing in production, which makes every form refuse submissions. Touches no database. |
+| `https://billmelanson.org` keyword `Bill Melanson` | 5 min | page content | A Vercel error page returning 200. Checking for his name means the alert fires when the page is *wrong*, not merely reachable. |
+| `https://billmelanson.org/api/health?deep=1` | **60 min, never faster** | status code | The **database being unreachable.** The home page is static, so Vercel keeps serving it with a 200 while the guestbook and gallery are broken — a homepage check would report all-clear through the outage that matters most. |
+
+> ### ⚠ Never poll `?deep=1` every five minutes
+>
+> That is what exhausted the database in August 2026, and it is an easy mistake to
+> repeat because it looks like diligence.
+>
+> Neon's free plan allows **100 CU-hours a month** and suspends an idle compute
+> after **five minutes** — a timeout that cannot be lengthened on that plan. The
+> deep check queries Postgres, so polling it every five minutes reset the idle
+> timer just before it ever fired. The compute never slept, drew 0.25 CU around
+> the clock, and burned the month's allowance in about **17 days**. The graph was
+> a flat line at 0.25 CU with a single dip in 24 hours.
+>
+> At hourly, each check wakes the compute for five minutes: about 2 hours a day,
+> roughly **15 CU-hours a month**. The cost of the slower interval is that a
+> database outage is noticed within an hour rather than five minutes, which is the
+> right trade — a broken gallery is not an emergency, and an alert that cannot be
+> afforded is worth less than one that fires late.
 
 `/api/health` returns 503 only for a real visitor-facing outage — the database being down,
 or Turnstile's secret missing in production, which makes every form refuse submissions.
@@ -239,7 +258,7 @@ UptimeRobot's free plan has **zero notify seats** — alerts only ever go to the
 owner's own address, and adding recipients starts at $9/month. That is poor value against
 a site costing about $60/year to run.
 
-**So there is more than one UptimeRobot account, each watching the same two URLs:**
+**So there is more than one UptimeRobot account, each watching the same three URLs:**
 
 | Account | Alerts | Purpose |
 |---|---|---|
@@ -258,9 +277,10 @@ independently-owned second account has no such shared dependency.
 Anyone else who should be alerted (Luke) can add their own free account the same way; the
 monitors take a minute to recreate.
 
-**When adding an account, recreate both monitors** — the health endpoint *and* the keyword
-check. An account watching only the home page would report all-clear through a database
-outage.
+**When adding an account, recreate all three monitors** — both health endpoints *and* the
+keyword check, with the same intervals (`?deep=1` no faster than hourly). An account
+watching only the home page would report all-clear through a database outage, and one
+polling `?deep=1` too often reintroduces the compute cost this section warns about.
 
 If two dashboards ever becomes tiresome, the alternative is a Gmail filter forwarding
 `From: uptimerobot.com` to other addresses. Simpler to run, but it keeps the shared
